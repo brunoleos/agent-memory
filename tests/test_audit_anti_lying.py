@@ -105,3 +105,20 @@ def test_freshness_no_git_returns_no_warning(tmp_path):
     """tmp_path (sem git init) deve retornar lista vazia, não quebrar."""
     issues = audit.validate_state_freshness(tmp_path, days=7)
     assert issues == []
+
+
+def test_audit_flags_stale_frontmatter_as_warning(audit_with_tmp_root):
+    """F-0040: frontmatter com paths legados/budget removido vira warning
+    durável no audit (não só aviso no deploy)."""
+    root = audit_with_tmp_root
+    (root / "AGENTS.md").write_text(
+        "---\nschema_version: 2\nproject: t\n"
+        "references:\n  state: ./.agent-memory/STATE.md\n"
+        "budgets:\n  state_max_bytes: 4096\n---\n\n# T\n",
+        encoding="utf-8",
+    )
+    result = audit.run_audit(write_indices=False)
+    stale = [i for i in result["issues"]
+             if i["artifact"] == "AGENTS.md" and "legado" in i["message"]]
+    assert stale, "esperava warnings de frontmatter stale"
+    assert all(i["severity"] == "warning" for i in stale)

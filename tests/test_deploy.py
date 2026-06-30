@@ -77,6 +77,55 @@ def test_dry_run_reports_in_sync_after_deploy(tmp_project, capsys):
     assert "atualizaria: .feat-memory/.meta.yaml" in out
 
 
+def test_dry_run_warns_about_stale_frontmatter(tmp_project, capsys):
+    """#1: o dry-run sinaliza frontmatter stale que o deploy não corrige."""
+    (tmp_project / "AGENTS.md").write_text(
+        "---\n"
+        "schema_version: 2\n"
+        "project: t\n"
+        "references:\n"
+        "  state: ./.agent-memory/STATE.md\n"
+        "  methodology: https://github.com/x/feat-memory/blob/v0.1.0/METHODOLOGY.md\n"
+        "budgets:\n"
+        "  state_max_bytes: 4096\n"
+        "---\n\n# T\n",
+        encoding="utf-8",
+    )
+    deploy.run(_args(tmp_project, dry_run=True))
+    out = capsys.readouterr().out
+
+    assert "⚠ frontmatter desatualizado" in out
+    assert "aviso(s) de frontmatter para corrigir à mão" in out
+    # E não escreveu nada no frontmatter.
+    assert "state: ./.agent-memory/STATE.md" in (tmp_project / "AGENTS.md").read_text(
+        encoding="utf-8")
+
+
+def test_dry_run_detects_env_already_done(tmp_project, capsys):
+    """#2: após um deploy real com hooks, o dry-run reporta já-instalado/
+    já-configurado em vez de super-reportar configuraria/instalaria."""
+    deploy.run(_args(tmp_project, no_hooks=False))
+    capsys.readouterr()
+
+    deploy.run(_args(tmp_project, no_hooks=False, dry_run=True))
+    out = capsys.readouterr().out
+
+    assert "já configurado: merge.ours.driver" in out
+    assert "já instalado: pre-commit" in out
+    assert "configuraria" not in out
+    assert "instalaria" not in out
+
+
+def test_dry_run_footer_splits_file_and_env_scopes(tmp_project, capsys):
+    """#3: o rodapé separa arquivos de ações de ambiente (não mistura escopos)."""
+    deploy.run(_args(tmp_project, no_hooks=False, dry_run=True))
+    out = capsys.readouterr().out
+
+    # Projeto fresco: arquivos + ambiente, ambos contados e rotulados.
+    assert "arquivo(s)" in out
+    assert "ação(ões) de ambiente" in out
+
+
 def test_deploy_creates_all_artifacts(tmp_project):
     rc = deploy.run(_args(tmp_project))
     assert rc == 0

@@ -46,4 +46,4 @@
 | ADR-0048 | 2026-06-26 | accepted | debrief,retrospective,methodology | F-0039 |
 | ADR-0049 | 2026-06-30 | accepted | process,refactor,testing,methodology | — |
 
-_Gerado por `feat-memory audit` em 2026-06-30T18:35:57+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-06-30T19:47:20+00:00. Não edite manualmente._

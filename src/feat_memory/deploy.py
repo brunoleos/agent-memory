@@ -7,6 +7,10 @@ instala hooks e configura .gitignore/.gitattributes no target.
 útil para revisar o efeito de um upgrade antes de commitar. A garantia de
 zero-mutação é coberta por teste de regressão (árvore byte-idêntica).
 
+Tanto o deploy quanto o dry-run sinalizam frontmatter stale no AGENTS.md
+(paths legados, methodology desatualizada) que o deploy não corrige — o
+frontmatter é human-owned (F-0041).
+
 Comportamento por arquivo:
     AGENTS.md            → bloco com sentinelas markdown, refrescado a cada
                             deploy; conteúdo do usuário fora do bloco nunca
@@ -33,6 +37,8 @@ from importlib.resources.abc import Traversable
 from pathlib import Path
 
 from feat_memory.governance import install_hooks
+from feat_memory.shared.frontmatter import detect_stale_frontmatter
+from feat_memory.shared.parsing import parse_frontmatter
 
 
 SENTINEL_BEGIN = "# >>> feat-memory >>>"
@@ -52,6 +58,33 @@ def _verb(done: str, would: str, dry_run: bool) -> str:
     condicional sob `--dry-run` sem repetir o ternário em cada call site.
     """
     return would if dry_run else done
+
+
+def _warn_stale_frontmatter(target: Path) -> int:
+    """Avisa sobre frontmatter stale no AGENTS.md do consumidor.
+
+    O deploy refresca o bloco entre sentinelas mas **não** toca o frontmatter
+    (`references`/`budgets`) — então paths legados ou URL de methodology numa
+    versão antiga passariam despercebidos. Read-only (roda igual em dry-run e
+    aplicado). Retorna o número de avisos. Ver F-0040.
+    """
+    dst = target / "AGENTS.md"
+    if not dst.exists():
+        return 0
+    try:
+        fm, _ = parse_frontmatter(dst)
+    except (ValueError, OSError):
+        return 0
+    if not fm:
+        return 0
+    from feat_memory import __version__
+    findings = detect_stale_frontmatter(fm, __version__)
+    for msg in findings:
+        print(f"  ⚠ frontmatter desatualizado: {msg}")
+    if findings:
+        print("  (o deploy refresca o bloco mas NÃO toca o frontmatter — "
+              "corrija à mão)")
+    return len(findings)
 
 
 def _data_path(*parts: str) -> Traversable:
@@ -179,7 +212,7 @@ def _extract_methodology_block(template_text: str) -> str:
 
 
 def deploy_constitution(target: Path, force: bool, merge: bool,
-                        dry_run: bool = False) -> int:
+                        dry_run: bool = False) -> tuple[int, int]:
     """Deploy de AGENTS.md (via bloco com sentinelas) e CLAUDE.md.
 
     Para AGENTS.md, a única mudança que o deploy faz num arquivo existente
@@ -191,8 +224,9 @@ def deploy_constitution(target: Path, force: bool, merge: bool,
     Para CLAUDE.md (redirect mínimo `@AGENTS.md`), copia se ausente e
     deixa quieto se existe — não há merge nem refresh.
 
-    Sob `dry_run`, nada é escrito; só reporta o que mudaria. Retorna o
-    número de arquivos que (seriam) criados/atualizados.
+    Sob `dry_run`, nada é escrito; só reporta o que mudaria. Retorna
+    `(arquivos_mudados, avisos_de_frontmatter)` — o frontmatter não é tocado
+    pelo deploy, só sinalizado quando stale.
     """
     print("Constituição (AGENTS.md, CLAUDE.md):")
     changes = 0
@@ -241,6 +275,8 @@ def deploy_constitution(target: Path, force: bool, merge: bool,
         else:
             print("  já em dia: AGENTS.md (bloco feat-memory sem mudanças)")
 
+    warnings = _warn_stale_frontmatter(target)
+
     src = _data_path("templates", "CLAUDE.md")
     dst = target / "CLAUDE.md"
     if not src.is_file():
@@ -261,7 +297,7 @@ def deploy_constitution(target: Path, force: bool, merge: bool,
     else:
         print("  pulado: CLAUDE.md (já existe)")
 
-    return changes
+    return changes, warnings
 
 
 META_HEADER = (
@@ -381,10 +417,24 @@ def deploy_ideas(target: Path, dry_run: bool = False) -> int:
     return 1
 
 
-def deploy_gitattributes(target: Path, dry_run: bool = False) -> int:
+def _merge_driver_configured(target: Path) -> bool:
+    """True se `merge.ours.driver` já está setado como `true` no repo."""
+    try:
+        r = subprocess.run(
+            ["git", "config", "--get", "merge.ours.driver"],
+            cwd=target, capture_output=True, text=True, check=False,
+        )
+        return r.returncode == 0 and r.stdout.strip() == "true"
+    except FileNotFoundError:
+        return False
+
+
+def deploy_gitattributes(target: Path, dry_run: bool = False) -> tuple[int, int]:
     """Deploy do .gitattributes (bloco com sentinelas) + driver de merge.
 
-    Sob `dry_run`, não escreve nem mexe no `git config`.
+    Sob `dry_run`, não escreve nem mexe no `git config`. Retorna
+    `(arquivos_mudados, ações_de_ambiente)` — o `merge.ours.driver` só conta
+    como ação quando ainda não está configurado.
     """
     print("Configuração de merge (.gitattributes):")
     src = _data_path("templates", ".gitattributes")
@@ -406,9 +456,13 @@ def deploy_gitattributes(target: Path, dry_run: bool = False) -> int:
     else:
         print("  já em dia: .gitattributes (bloco feat-memory sem mudanças)")
 
+    env_changes = 0
     if (target / ".git").exists():
-        if dry_run:
+        if _merge_driver_configured(target):
+            print("  já configurado: merge.ours.driver")
+        elif dry_run:
             print("  configuraria: merge.ours.driver")
+            env_changes = 1
         else:
             try:
                 subprocess.check_call(
@@ -416,10 +470,11 @@ def deploy_gitattributes(target: Path, dry_run: bool = False) -> int:
                     cwd=target, stdout=subprocess.DEVNULL,
                 )
                 print("  configurado: merge.ours.driver")
+                env_changes = 1
             except (subprocess.CalledProcessError, FileNotFoundError):
                 print("  AVISO: não foi possível configurar merge.ours.driver")
 
-    return 1 if changed else 0
+    return (1 if changed else 0), env_changes
 
 
 def ensure_gitignore(target: Path, dry_run: bool = False) -> int:
@@ -673,13 +728,14 @@ def create_directories(target: Path, dry_run: bool = False) -> int:
     return changes
 
 
-def install_git_hooks(target: Path, dry_run: bool = False) -> None:
-    """Instala git hooks no target. Sob `dry_run`, só anuncia."""
+def install_git_hooks(target: Path, dry_run: bool = False) -> int:
+    """Instala git hooks no target. Sob `dry_run`, só anuncia.
+
+    Retorna o número de hooks que (seriam) instalados/atualizados — hooks
+    idênticos não contam ('já instalado').
+    """
     print("Git hooks:")
-    if dry_run:
-        print("  instalaria/atualizaria: pre-commit (audit + gates de doc-sync)")
-        return
-    install_hooks.install(target)
+    return install_hooks.install(target, dry_run=dry_run)
 
 
 def run_audit(target: Path) -> None:
@@ -768,9 +824,12 @@ def run(args: argparse.Namespace) -> int:
     if deploy_dir.exists() and not dry_run:
         shutil.rmtree(deploy_dir, ignore_errors=True)
 
-    changes = 0
+    changes = 0       # arquivos criados/atualizados
+    env_actions = 0   # git config + hooks
+    warnings = 0      # avisos de frontmatter (deploy não corrige)
 
-    changes += deploy_constitution(target, args.force, not args.no_merge, dry_run)
+    fc, warnings = deploy_constitution(target, args.force, not args.no_merge, dry_run)
+    changes += fc
     print()
 
     changes += deploy_meta(target, dry_run)
@@ -782,7 +841,9 @@ def run(args: argparse.Namespace) -> int:
     changes += deploy_ideas(target, dry_run)
     print()
 
-    changes += deploy_gitattributes(target, dry_run)
+    fc, ec = deploy_gitattributes(target, dry_run)
+    changes += fc
+    env_actions += ec
     print()
 
     changes += ensure_gitignore(target, dry_run)
@@ -798,7 +859,7 @@ def run(args: argparse.Namespace) -> int:
     print()
 
     if not args.no_hooks:
-        install_git_hooks(target, dry_run)
+        env_actions += install_git_hooks(target, dry_run)
     else:
         print("Git hooks: pulado (--no-hooks)")
     print()
@@ -811,10 +872,18 @@ def run(args: argparse.Namespace) -> int:
 
     print("=" * 38)
     if dry_run:
+        parts = []
         if changes:
-            print(f"Dry-run: {changes} mudança(s) de arquivo planejada(s).")
+            parts.append(f"{changes} arquivo(s)")
+        if env_actions:
+            parts.append(f"{env_actions} ação(ões) de ambiente")
+        if parts:
+            print(f"Dry-run: {' + '.join(parts)} a aplicar.")
         else:
             print("Dry-run: nada a fazer — tudo em dia.")
+        if warnings:
+            print(f"⚠ {warnings} aviso(s) de frontmatter para corrigir à mão "
+                  "(o deploy não os resolve).")
         print("Nada foi escrito. Rode sem --dry-run para aplicar.")
         print("=" * 38)
         return 0

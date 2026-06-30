@@ -446,6 +446,14 @@ def run_audit(write_indices: bool = True,
     agent_fm, issues = validate_agent(_paths.AGENT)
     all_issues.extend(issues)
 
+    # Frontmatter stale: o deploy refresca o bloco mas não toca references/budgets,
+    # então paths legados (.agent-memory/, state:, state_max_bytes) ou URL de
+    # methodology numa versão antiga passam silenciosos. Warning durável (F-0040).
+    from feat_memory.shared.frontmatter import detect_stale_frontmatter
+    from feat_memory import __version__ as _fm_version
+    for _msg in detect_stale_frontmatter(agent_fm, _fm_version):
+        all_issues.append(Issue("AGENTS.md", "warning", _msg))
+
     # Constitution enforced: executa os checkers declarativos das constraints
     # com bloco `check` (ADR-0028). Violação herda a severity da constraint
     # (hard→error/bloqueia, soft→warning); `check` malformado é error de schema.

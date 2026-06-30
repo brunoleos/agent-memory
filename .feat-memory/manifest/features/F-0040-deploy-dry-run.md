@@ -12,6 +12,7 @@ acceptance:
   - {id: A1, pattern: event, trigger: "feat-memory deploy --dry-run é invocado", response: "reporta cada mudança no condicional (criaria/atualizaria/já em dia) e não escreve nenhum arquivo"}
   - {id: A2, pattern: ubiquitous, requirement: "a árvore do projeto fica byte-idêntica após um dry-run (garantia coberta por teste de regressão)"}
   - {id: A3, pattern: state, state: "nada divergente", response: "reporta 'nada a fazer — tudo em dia'"}
+  - {id: A4, pattern: event, trigger: "hooks/merge-driver já presentes e idênticos", response: "reporta 'já instalado'/'já configurado' (mesma fidelidade dos arquivos); o rodapé separa arquivos de ações de ambiente"}
 depends_on: []
 decisions: []
 ---
