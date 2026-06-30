@@ -20,5 +20,6 @@
 | F-0037 | changelog-layout-migration | deprecated | 2.0.0 | ADR-0042,ADR-0043 | F-0035,F-0036 |
 | F-0038 | ideas-funnel | shipped | 2.2.0 | ADR-0047 | F-0036 |
 | F-0039 | debrief-retrospective | shipped | 2.1.0 | ADR-0048 | F-0038 |
+| F-0040 | deploy-dry-run | shipped | 2.4.0 | — | — |
 
-_Gerado por `feat-memory audit` em 2026-06-30T03:53:20+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-06-30T18:35:57+00:00. Não edite manualmente._

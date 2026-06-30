@@ -13,15 +13,68 @@ from feat_memory.shared.parsing import parse_frontmatter
 
 
 def _args(target: Path | str, *, force: bool = False, no_merge: bool = False,
-          no_hooks: bool = True) -> argparse.Namespace:
+          no_hooks: bool = True, dry_run: bool = False) -> argparse.Namespace:
     return argparse.Namespace(
         target=str(target),
         force=force,
         no_merge=no_merge,
         no_hooks=no_hooks,
+        dry_run=dry_run,
         cmd="deploy",
         func=deploy.run,
     )
+
+
+def _snapshot(root: Path) -> dict[str, bytes]:
+    """Mapa relpath→bytes de todo arquivo sob root, exceto o .git/."""
+    snap: dict[str, bytes] = {}
+    for p in root.rglob("*"):
+        if p.is_file() and ".git" not in p.relative_to(root).parts:
+            snap[str(p.relative_to(root))] = p.read_bytes()
+    return snap
+
+
+# --- dry-run --------------------------------------------------------------
+
+def test_dry_run_on_fresh_project_writes_nothing(tmp_project, capsys):
+    rc = deploy.run(_args(tmp_project, dry_run=True))
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    # Nenhum artefato foi criado.
+    assert not (tmp_project / "AGENTS.md").exists()
+    assert not (tmp_project / "CLAUDE.md").exists()
+    assert not (tmp_project / ".feat-memory").exists()
+    assert not (tmp_project / "skills").exists()
+    assert not (tmp_project / ".gitignore").exists()
+    # Mas reporta o que faria, no condicional.
+    assert "[DRY-RUN]" in out
+    assert "criaria: AGENTS.md" in out
+    assert "Nada foi escrito" in out
+
+
+def test_dry_run_after_deploy_is_byte_identical(tmp_project):
+    """Garantia anti-mutação: um dry-run sobre um projeto já deployado não
+    altera um único byte (cobre a classe 'guard de escrita esquecido')."""
+    assert deploy.run(_args(tmp_project)) == 0
+    before = _snapshot(tmp_project)
+
+    assert deploy.run(_args(tmp_project, dry_run=True)) == 0
+    after = _snapshot(tmp_project)
+
+    assert after == before
+
+
+def test_dry_run_reports_in_sync_after_deploy(tmp_project, capsys):
+    deploy.run(_args(tmp_project))
+    capsys.readouterr()  # descarta a saída do deploy real
+
+    deploy.run(_args(tmp_project, dry_run=True))
+    out = capsys.readouterr().out
+
+    # Skills idênticas não geram falsa mudança; meta sempre muda (timestamp).
+    assert "já em dia: memory-deploy" in out
+    assert "atualizaria: .feat-memory/.meta.yaml" in out
 
 
 def test_deploy_creates_all_artifacts(tmp_project):

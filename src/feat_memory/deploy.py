@@ -3,6 +3,10 @@
 Subcomando da CLI: `feat-memory deploy <target>`. Copia templates,
 instala hooks e configura .gitignore/.gitattributes no target.
 
+`--dry-run` reporta o que mudaria (criaria/atualizaria) sem escrever nada —
+útil para revisar o efeito de um upgrade antes de commitar. A garantia de
+zero-mutação é coberta por teste de regressão (árvore byte-idêntica).
+
 Comportamento por arquivo:
     AGENTS.md            → bloco com sentinelas markdown, refrescado a cada
                             deploy; conteúdo do usuário fora do bloco nunca
@@ -39,6 +43,15 @@ SENTINEL_END = "# <<< feat-memory <<<"
 # porque `#` em markdown é heading, não comentário.
 MD_SENTINEL_BEGIN = "<!-- >>> feat-memory >>> -->"
 MD_SENTINEL_END = "<!-- <<< feat-memory <<< -->"
+
+
+def _verb(done: str, would: str, dry_run: bool) -> str:
+    """Verbo no modo certo: 'criaria' (dry-run) vs 'criado' (aplicado).
+
+    Centraliza a flexão para que toda linha de log do `deploy` fale no
+    condicional sob `--dry-run` sem repetir o ternário em cada call site.
+    """
+    return would if dry_run else done
 
 
 def _data_path(*parts: str) -> Traversable:
@@ -165,7 +178,8 @@ def _extract_methodology_block(template_text: str) -> str:
     return block.strip()
 
 
-def deploy_constitution(target: Path, force: bool, merge: bool) -> None:
+def deploy_constitution(target: Path, force: bool, merge: bool,
+                        dry_run: bool = False) -> int:
     """Deploy de AGENTS.md (via bloco com sentinelas) e CLAUDE.md.
 
     Para AGENTS.md, a única mudança que o deploy faz num arquivo existente
@@ -176,8 +190,12 @@ def deploy_constitution(target: Path, force: bool, merge: bool) -> None:
 
     Para CLAUDE.md (redirect mínimo `@AGENTS.md`), copia se ausente e
     deixa quieto se existe — não há merge nem refresh.
+
+    Sob `dry_run`, nada é escrito; só reporta o que mudaria. Retorna o
+    número de arquivos que (seriam) criados/atualizados.
     """
     print("Constituição (AGENTS.md, CLAUDE.md):")
+    changes = 0
 
     src = _data_path("templates", "AGENTS.md")
     dst = target / "AGENTS.md"
@@ -188,11 +206,16 @@ def deploy_constitution(target: Path, force: bool, merge: bool) -> None:
     template_text = _substitute_tokens(src.read_text(encoding="utf-8"))
 
     if not dst.exists():
-        dst.write_text(template_text, encoding="utf-8")
-        print("  criado: AGENTS.md")
+        if not dry_run:
+            dst.write_text(template_text, encoding="utf-8")
+        print(f"  {_verb('criado', 'criaria', dry_run)}: AGENTS.md")
+        changes += 1
     elif force:
-        dst.write_text(template_text, encoding="utf-8")
-        print("  sobrescrito: AGENTS.md (--force)")
+        if not dry_run:
+            dst.write_text(template_text, encoding="utf-8")
+        print(f"  {_verb('sobrescrito', 'sobrescreveria', dry_run)}: "
+              "AGENTS.md (--force)")
+        changes += 1
     elif not merge:
         print("  pulado: AGENTS.md (já existe; --no-merge)")
     else:
@@ -205,12 +228,16 @@ def deploy_constitution(target: Path, force: bool, merge: bool) -> None:
             begin=MD_SENTINEL_BEGIN, end=MD_SENTINEL_END,
         )
         if changed or fm_added:
-            dst.write_text(new_content, encoding="utf-8")
-            verb = "atualizado" if had_block else "atualizado (bloco anexado)"
-            print(f"  {verb}: AGENTS.md (bloco feat-memory)")
+            if not dry_run:
+                dst.write_text(new_content, encoding="utf-8")
+            tail = "" if had_block else " (bloco anexado)"
+            print(f"  {_verb('atualizado', 'atualizaria', dry_run)}{tail}: "
+                  "AGENTS.md (bloco feat-memory)")
             if fm_added:
-                print("  injetado: AGENTS.md (esqueleto de frontmatter — "
+                verb = _verb('injetado', 'injetaria', dry_run)
+                print(f"  {verb}: AGENTS.md (esqueleto de frontmatter — "
                       "preencha os campos TODO)")
+            changes += 1
         else:
             print("  já em dia: AGENTS.md (bloco feat-memory sem mudanças)")
 
@@ -221,13 +248,20 @@ def deploy_constitution(target: Path, force: bool, merge: bool) -> None:
         sys.exit(1)
 
     if not dst.exists():
-        _copy_template(src, dst)
-        print("  criado: CLAUDE.md")
+        if not dry_run:
+            _copy_template(src, dst)
+        print(f"  {_verb('criado', 'criaria', dry_run)}: CLAUDE.md")
+        changes += 1
     elif force:
-        _copy_template(src, dst)
-        print("  sobrescrito: CLAUDE.md (--force)")
+        if not dry_run:
+            _copy_template(src, dst)
+        print(f"  {_verb('sobrescrito', 'sobrescreveria', dry_run)}: "
+              "CLAUDE.md (--force)")
+        changes += 1
     else:
         print("  pulado: CLAUDE.md (já existe)")
+
+    return changes
 
 
 META_HEADER = (
@@ -242,13 +276,16 @@ META_HEADER = (
 )
 
 
-def deploy_meta(target: Path) -> None:
+def deploy_meta(target: Path, dry_run: bool = False) -> int:
     """Grava .feat-memory/.meta.yaml com versão e timestamp.
 
     Idempotente por construção: cada deploy sobrescreve o arquivo com os
     valores correntes. Schema definido em ADR-0013; `cli_path` removido em
     ADR-0034 (era caminho absoluto, local, da máquina do autor, versionado no
     Git sem nenhum consumidor que o lesse).
+
+    Sob `dry_run`, não escreve. O `.meta.yaml` carrega um `deployed_at` que
+    muda a cada deploy, então é sempre reportado como mudança.
     """
     print("Metadata (.feat-memory/.meta.yaml):")
 
@@ -258,40 +295,45 @@ def deploy_meta(target: Path) -> None:
 
     from feat_memory import __version__
 
-    data = {
-        "schema_version": 1,
-        "version": __version__,
-        "deployed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "telemetry_enabled": True,
-    }
-
     feat_memory_dir = target / ".feat-memory"
-    feat_memory_dir.mkdir(parents=True, exist_ok=True)
     dst = feat_memory_dir / ".meta.yaml"
-
     existed = dst.exists()
-    body = yaml.safe_dump(data, sort_keys=False, default_flow_style=False)
-    dst.write_text(META_HEADER + body, encoding="utf-8")
 
-    verb = "atualizado" if existed else "criado"
+    if not dry_run:
+        data = {
+            "schema_version": 1,
+            "version": __version__,
+            "deployed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "telemetry_enabled": True,
+        }
+        feat_memory_dir.mkdir(parents=True, exist_ok=True)
+        body = yaml.safe_dump(data, sort_keys=False, default_flow_style=False)
+        dst.write_text(META_HEADER + body, encoding="utf-8")
+
+    verb = _verb("atualizado", "atualizaria", dry_run) if existed \
+        else _verb("criado", "criaria", dry_run)
     print(f"  {verb}: .feat-memory/.meta.yaml (v{__version__})")
+    return 1
 
 
-def deploy_changelog(target: Path) -> None:
+def deploy_changelog(target: Path, dry_run: bool = False) -> int:
     """Cria changelog/UNRELEASED.md em .feat-memory/ (pula se existe).
 
     Substitui o antigo STATE.md: o foco da sessão e o orçamento de retomada
     vivem nas entradas do UNRELEASED (ADR-0043). Conteúdo volátil — nunca
-    sobrescreve um existente.
+    sobrescreve um existente. Sob `dry_run`, não escreve.
     """
     from feat_memory.memory import changelog
     print("Changelog vivo (.feat-memory/changelog/UNRELEASED.md):")
     up = changelog.unreleased_path(target)
     if up.exists():
         print("  já existe: .feat-memory/changelog/UNRELEASED.md")
-    else:
+        return 0
+    if not dry_run:
         changelog.ensure_scaffold(target)
-        print("  criado: .feat-memory/changelog/UNRELEASED.md")
+    print(f"  {_verb('criado', 'criaria', dry_run)}: "
+          ".feat-memory/changelog/UNRELEASED.md")
+    return 1
 
 
 _IDEAS_MARKER = "<!-- Entradas"
@@ -307,16 +349,15 @@ def _ideas_entries(text: str) -> str:
     return text[m.start():].strip() if m else ""
 
 
-def deploy_ideas(target: Path) -> None:
+def deploy_ideas(target: Path, dry_run: bool = False) -> int:
     """Cria/refresca .feat-memory/ideas.md — funil do futuro (ADR-0047).
 
     O **cabeçalho** (descrição + tabela de triagem) é conteúdo de metodologia e
     é refrescado a cada deploy, como o bloco do AGENTS.md; as **entradas** do
-    usuário (`## ...`) são preservadas.
+    usuário (`## ...`) são preservadas. Sob `dry_run`, não escreve.
     """
     print("Funil do futuro (.feat-memory/ideas.md):")
     fm_dir = target / ".feat-memory"
-    fm_dir.mkdir(parents=True, exist_ok=True)
     dst = fm_dir / "ideas.md"
 
     header = _substitute_tokens(
@@ -326,54 +367,68 @@ def deploy_ideas(target: Path) -> None:
     content = header + (f"\n{entries}\n" if entries else "")
 
     before = dst.read_text(encoding="utf-8") if dst.exists() else None
-    if before != content:
+    if before == content:
+        print("  já atualizado: .feat-memory/ideas.md")
+        return 0
+    if not dry_run:
+        fm_dir.mkdir(parents=True, exist_ok=True)
         dst.write_text(content, encoding="utf-8")
     if before is None:
-        print("  criado: .feat-memory/ideas.md")
-    elif before != content:
-        print("  header refrescado: .feat-memory/ideas.md (entradas preservadas)")
+        print(f"  {_verb('criado', 'criaria', dry_run)}: .feat-memory/ideas.md")
     else:
-        print("  já atualizado: .feat-memory/ideas.md")
+        verb = _verb("header refrescado", "refrescaria o header", dry_run)
+        print(f"  {verb}: .feat-memory/ideas.md (entradas preservadas)")
+    return 1
 
 
-def deploy_gitattributes(target: Path) -> None:
-    """Deploy do .gitattributes (bloco com sentinelas) + driver de merge."""
+def deploy_gitattributes(target: Path, dry_run: bool = False) -> int:
+    """Deploy do .gitattributes (bloco com sentinelas) + driver de merge.
+
+    Sob `dry_run`, não escreve nem mexe no `git config`.
+    """
     print("Configuração de merge (.gitattributes):")
     src = _data_path("templates", ".gitattributes")
     dst = target / ".gitattributes"
 
     if not src.is_file():
-        return
+        return 0
 
     payload = src.read_text(encoding="utf-8").strip() + "\n"
     existing = dst.read_text(encoding="utf-8") if dst.exists() else ""
     new_content, changed = _replace_sentinel_block(existing, payload)
 
     if changed:
-        dst.write_text(new_content, encoding="utf-8")
-        verb = "atualizado" if existing else "criado"
+        if not dry_run:
+            dst.write_text(new_content, encoding="utf-8")
+        verb = _verb("atualizado", "atualizaria", dry_run) if existing \
+            else _verb("criado", "criaria", dry_run)
         print(f"  {verb}: .gitattributes (bloco feat-memory)")
     else:
         print("  já em dia: .gitattributes (bloco feat-memory sem mudanças)")
 
     if (target / ".git").exists():
-        try:
-            subprocess.check_call(
-                ["git", "config", "merge.ours.driver", "true"],
-                cwd=target, stdout=subprocess.DEVNULL,
-            )
-            print("  configurado: merge.ours.driver")
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            print("  AVISO: não foi possível configurar merge.ours.driver")
+        if dry_run:
+            print("  configuraria: merge.ours.driver")
+        else:
+            try:
+                subprocess.check_call(
+                    ["git", "config", "merge.ours.driver", "true"],
+                    cwd=target, stdout=subprocess.DEVNULL,
+                )
+                print("  configurado: merge.ours.driver")
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                print("  AVISO: não foi possível configurar merge.ours.driver")
+
+    return 1 if changed else 0
 
 
-def ensure_gitignore(target: Path) -> None:
+def ensure_gitignore(target: Path, dry_run: bool = False) -> int:
     """Garante que paths transientes/locais estão no .gitignore.
 
     `.feat-memory-deploy/` — diretório transiente do deploy legado.
     `.feat-memory/.telemetry.jsonl` — telemetria local opt-out (F-0014,
     ADR-0017): dado pessoal de adoção do dev, não memória do projeto;
-    versionar distribuiria padrões de uso individual.
+    versionar distribuiria padrões de uso individual. Sob `dry_run`, não escreve.
     """
     print("Gitignore (.feat-memory-deploy/, .telemetry.jsonl ignorados):")
     dst = target / ".gitignore"
@@ -382,11 +437,14 @@ def ensure_gitignore(target: Path) -> None:
     new_content, changed = _replace_sentinel_block(existing, payload)
 
     if changed:
-        dst.write_text(new_content, encoding="utf-8")
-        verb = "atualizado" if existing else "criado"
+        if not dry_run:
+            dst.write_text(new_content, encoding="utf-8")
+        verb = _verb("atualizado", "atualizaria", dry_run) if existing \
+            else _verb("criado", "criaria", dry_run)
         print(f"  {verb}: .gitignore (bloco feat-memory)")
-    else:
-        print("  já contém: .gitignore (bloco feat-memory presente)")
+        return 1
+    print("  já contém: .gitignore (bloco feat-memory presente)")
+    return 0
 
 
 def check_v03_layout(target: Path) -> bool:
@@ -450,7 +508,7 @@ def check_v03_layout(target: Path) -> bool:
     return True
 
 
-def migrate_legacy_layout(target: Path) -> bool:
+def migrate_legacy_layout(target: Path, dry_run: bool = False) -> bool:
     """Migra o layout legado `.agent-memory/` → `.feat-memory/` (rename do projeto).
 
     Caminho de upgrade para consumidores que adotaram a metodologia quando ela se
@@ -460,17 +518,29 @@ def migrate_legacy_layout(target: Path) -> bool:
 
     O `deploy` que chama isto em seguida reinstala o pre-commit hook (passa a chamar
     `feat-memory`) e refresca o bloco em AGENTS.md, completando a transição.
+
+    Sob `dry_run`, detecta e reporta a migração sem renomear (e sem remover o
+    diretório transiente legado).
     """
     legacy = target / ".agent-memory"
     current = target / ".feat-memory"
 
     # Diretório transiente legado do deploy antigo: descartável sempre.
     legacy_deploy = target / ".agent-memory-deploy"
-    if legacy_deploy.exists():
+    if legacy_deploy.exists() and not dry_run:
         shutil.rmtree(legacy_deploy, ignore_errors=True)
 
     if not legacy.is_dir():
         return False
+
+    if dry_run:
+        if current.exists():
+            print("AVISO: existem .agent-memory/ E .feat-memory/ — reconcilie "
+                  "manualmente (o deploy real não vai sobrescrever).")
+            return False
+        print("Migração de layout: migraria .agent-memory/ → .feat-memory/ "
+              "(rename); o plano abaixo assume o layout já migrado.")
+        return True
 
     if current.exists():
         print("AVISO: existem .agent-memory/ E .feat-memory/ — não vou "
@@ -493,45 +563,65 @@ def migrate_legacy_layout(target: Path) -> bool:
     return True
 
 
-def deploy_agents(target: Path) -> None:
+def deploy_agents(target: Path, dry_run: bool = False) -> int:
     """Deploy do(s) subagent(s) do Claude Code em .claude/agents/.
 
     Cada arquivo é um wrapper fino que pré-carrega a skill homônima (fonte
     única da lógica) via o campo `skills:` do frontmatter, dando ao agente um
-    contexto isolado. Sempre sobrescreve — conteúdo de metodologia, como as
-    skills. No-op silencioso se o pacote não traz a pasta agents/.
+    contexto isolado. Refresca quando diverge — conteúdo de metodologia, como
+    as skills. No-op silencioso se o pacote não traz a pasta agents/. Sob
+    `dry_run`, não escreve.
     """
     agents_src = _data_path("agents")
     if not agents_src.is_dir():
-        return
+        return 0
 
     print("Subagents (Claude Code):")
     agents_dst = target / ".claude" / "agents"
-    agents_dst.mkdir(parents=True, exist_ok=True)
+
+    changes = 0
+    if not dry_run:
+        agents_dst.mkdir(parents=True, exist_ok=True)
 
     for agent_path in sorted(agents_src.iterdir(), key=lambda e: e.name):
         if not (agent_path.is_file() and agent_path.name.endswith(".md")):
             continue
         dst_file = agents_dst / agent_path.name
+        src_text = agent_path.read_text(encoding="utf-8")
         existed = dst_file.exists()
-        _copy_resource(agent_path, dst_file)
-        verb = "atualizado" if existed else "deployado"
+        if existed and dst_file.read_text(encoding="utf-8") == src_text:
+            print(f"  já em dia: {agent_path.name}")
+            continue
+        if not dry_run:
+            _copy_resource(agent_path, dst_file)
+        verb = _verb("atualizado", "atualizaria", dry_run) if existed \
+            else _verb("deployado", "deployaria", dry_run)
         print(f"  {verb}: {agent_path.name}")
+        changes += 1
 
     print("  → se .claude/ está no seu .gitignore, rastreie os subagents "
           "(ex.: troque `.claude/` por `.claude/*` + `!.claude/agents/`)")
+    return changes
 
 
-def deploy_skills(target: Path, force: bool) -> None:
-    """Deploy de skills (sempre sobrescreve; conteúdo de metodologia)."""
+def deploy_skills(target: Path, force: bool, dry_run: bool = False) -> int:
+    """Deploy de skills (conteúdo de metodologia; refresca quando diverge).
+
+    Compara o conteúdo antes de escrever: skill idêntica vira no-op ("já em
+    dia"), o que torna o `--dry-run` honesto (só reporta o que realmente
+    mudaria). Sob `dry_run`, não escreve.
+    """
     print("Skills:")
     skills_dst = target / "skills"
-    skills_dst.mkdir(parents=True, exist_ok=True)
 
     skills_src = _data_path("skills")
     if not skills_src.is_dir():
         print("  AVISO: pasta skills/ ausente no pacote")
-        return
+        return 0
+
+    changes = 0
+    if not dry_run:
+        skills_dst.mkdir(parents=True, exist_ok=True)
 
     for skill_path in sorted(skills_src.iterdir(), key=lambda e: e.name):
         if not skill_path.is_dir():
@@ -545,30 +635,50 @@ def deploy_skills(target: Path, force: bool) -> None:
             print(f"  pulado: {skill_name} (sem SKILL.md no source)")
             continue
 
-        dst_dir.mkdir(parents=True, exist_ok=True)
+        src_text = src_file.read_text(encoding="utf-8")
         existed = dst_file.exists()
-        _copy_resource(src_file, dst_file)
-        verb = "atualizada" if existed else "deployada"
+        if existed and dst_file.read_text(encoding="utf-8") == src_text:
+            print(f"  já em dia: {skill_name}")
+            continue
+
+        if not dry_run:
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            _copy_resource(src_file, dst_file)
+        verb = _verb("atualizada", "atualizaria", dry_run) if existed \
+            else _verb("deployada", "deployaria", dry_run)
         print(f"  {verb}: {skill_name}")
+        changes += 1
+
+    return changes
 
 
-def create_directories(target: Path) -> None:
-    """Cria estrutura de pastas .feat-memory/manifest/, decisions/, changelog/."""
+def create_directories(target: Path, dry_run: bool = False) -> int:
+    """Cria estrutura de pastas .feat-memory/manifest/, decisions/, changelog/.
+
+    Sob `dry_run`, não cria nada.
+    """
     print("Estrutura de pastas:")
     base = target / ".feat-memory"
+    changes = 0
     for rel in ("manifest/features", "decisions/proposals", "changelog"):
         full = base / rel
         if full.exists():
             print(f"  já existe: .feat-memory/{rel}/")
         else:
-            full.mkdir(parents=True, exist_ok=True)
-            (full / ".gitkeep").touch()
-            print(f"  criado: .feat-memory/{rel}/")
+            if not dry_run:
+                full.mkdir(parents=True, exist_ok=True)
+                (full / ".gitkeep").touch()
+            print(f"  {_verb('criado', 'criaria', dry_run)}: .feat-memory/{rel}/")
+            changes += 1
+    return changes
 
 
-def install_git_hooks(target: Path) -> None:
-    """Instala git hooks no target."""
+def install_git_hooks(target: Path, dry_run: bool = False) -> None:
+    """Instala git hooks no target. Sob `dry_run`, só anuncia."""
     print("Git hooks:")
+    if dry_run:
+        print("  instalaria/atualizaria: pre-commit (audit + gates de doc-sync)")
+        return
     install_hooks.install(target)
 
 
@@ -618,6 +728,8 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
                    help="pula arquivos existentes em vez de mesclar")
     p.add_argument("--no-hooks", action="store_true",
                    help="pula instalação de git hooks")
+    p.add_argument("--dry-run", action="store_true",
+                   help="mostra o que mudaria sem escrever nada")
     p.set_defaults(func=run)
 
 
@@ -630,65 +742,83 @@ def run(args: argparse.Namespace) -> int:
         print(f"ERRO: target não é um diretório: {target}", file=sys.stderr)
         return 1
 
+    dry_run = getattr(args, "dry_run", False)
+
     print("=" * 38)
-    print("Deploy da metodologia de memória")
+    print("Deploy da metodologia de memória" + (" [DRY-RUN]" if dry_run else ""))
     print("=" * 38)
 
     from feat_memory import __version__
     print(f"Versão: {__version__}")
     print(f"Target: {target}")
+    if dry_run:
+        print("Modo dry-run: nada será escrito; só o que mudaria é reportado.")
     print()
 
     if check_v03_layout(target):
         return 1
 
-    if migrate_legacy_layout(target):
+    if migrate_legacy_layout(target, dry_run):
         print()
 
     deploy_dir = target / ".feat-memory-deploy"
     # Remove o diretório transiente legado (de versões anteriores que tinham
     # merge queue para AGENTS.md). v0.4+ resolve a constituição direto via
     # bloco com sentinelas, sem handoff intermediário.
-    if deploy_dir.exists():
+    if deploy_dir.exists() and not dry_run:
         shutil.rmtree(deploy_dir, ignore_errors=True)
 
-    deploy_constitution(target, args.force, not args.no_merge)
+    changes = 0
+
+    changes += deploy_constitution(target, args.force, not args.no_merge, dry_run)
     print()
 
-    deploy_meta(target)
+    changes += deploy_meta(target, dry_run)
     print()
 
-    deploy_changelog(target)
+    changes += deploy_changelog(target, dry_run)
     print()
 
-    deploy_ideas(target)
+    changes += deploy_ideas(target, dry_run)
     print()
 
-    deploy_gitattributes(target)
+    changes += deploy_gitattributes(target, dry_run)
     print()
 
-    ensure_gitignore(target)
+    changes += ensure_gitignore(target, dry_run)
     print()
 
-    deploy_skills(target, args.force)
+    changes += deploy_skills(target, args.force, dry_run)
     print()
 
-    deploy_agents(target)
+    changes += deploy_agents(target, dry_run)
     print()
 
-    create_directories(target)
+    changes += create_directories(target, dry_run)
     print()
 
     if not args.no_hooks:
-        install_git_hooks(target)
+        install_git_hooks(target, dry_run)
     else:
         print("Git hooks: pulado (--no-hooks)")
     print()
 
-    run_audit(target)
+    if dry_run:
+        print("Auditoria inicial: pulada em --dry-run (roda após aplicar)")
+    else:
+        run_audit(target)
     print()
 
     print("=" * 38)
+    if dry_run:
+        if changes:
+            print(f"Dry-run: {changes} mudança(s) de arquivo planejada(s).")
+        else:
+            print("Dry-run: nada a fazer — tudo em dia.")
+        print("Nada foi escrito. Rode sem --dry-run para aplicar.")
+        print("=" * 38)
+        return 0
+
     print("Deploy concluído.")
     print("=" * 38)
     print()

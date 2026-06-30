@@ -30,9 +30,3 @@ Formato por entrada (uma seção `##` por ideia):
     - **occ:** ocorrências (bump silencioso em duplicata)
 
 <!-- Entradas abaixo. Vazio = sem ideias pendentes. -->
-
-## deploy-dry-run
-
-- **tipo:** produto-capacidade
-- **contexto:** consumidores que atualizam o feat-memory querem ver o que o `deploy` **mudaria** antes de commitar — especialmente depois dos bugs de migração silenciosa que o tensegrams pegou. Um `feat-memory deploy --dry-run` listaria as mudanças (arquivos criados/refrescados, frontmatter tocado) sem aplicá-las.
-- **occ:** 1

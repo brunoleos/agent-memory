@@ -9,7 +9,7 @@ contracts:
   api: src/feat_memory/deploy.py::deploy_ideas
   tests: tests/test_deploy.py
 acceptance:
-  - {id: A1, pattern: event, trigger: "feat-memory deploy é invocado", response: "cria .feat-memory/ideas.md se ausente, ou migra um suggestions.md legado preservando as entradas"}
+  - {id: A1, pattern: event, trigger: "feat-memory deploy é invocado", response: "cria .feat-memory/ideas.md se ausente; refresca o cabeçalho preservando as entradas do usuário"}
   - {id: A2, pattern: ubiquitous, requirement: "o funil é commitado/versionado (merge normal, não merge=ours)"}
   - {id: A3, pattern: state, state: "changelog/UNRELEASED.md vazio", response: "a bootstrap oferece candidatos do ideas.md como próximo foco"}
 depends_on: [F-0036]
