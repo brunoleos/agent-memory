@@ -86,6 +86,8 @@ Cada arquivo de feature tem o nome `F-NNNN-slug.md`, onde NNNN é um número mon
 
 Os campos obrigatórios do frontmatter são `id`, `name`, `status`, `user_value`, `contracts` e `acceptance`. Os opcionais incluem `version` (semver da última release que tocou a feature), `owner` (time ou pessoa), `depends_on` (lista de IDs de outras features), `decisions` (lista de IDs de ADRs relacionados) e `metrics` (medidas operacionais, com timestamp).
 
+A feature é um **registro, não um documento** (doutrina da ortogonalidade, ADR-0050): o valor vive no frontmatter — aceites observáveis e ponteiros — e o corpo em prosa é onde memória paralela se acumula. O `feat-memory audit` emite warning quando o corpo excede o orçamento do perfil de instalação (`core`: 10 linhas não-vazias; `full`: 40). Corpo, quando existir, guarda apenas racional que nenhum outro artefato abriga — nunca transcrição de README/docs. Critérios de aceite enunciam **observáveis externos, nunca mecanismo** (doutrina do observável): vocabulário de mecanismo pertence a ADRs e, quando aparece em critério, o audit emite um nudge informativo derivado do léxico dos próprios ADRs (F-0046).
+
 O campo `status` aceita quatro valores: `proposed` (intencionada, ainda não construída), `in_progress` (em construção ativa), `shipped` (entregue e em uso) e `deprecated` (mantida apenas para compatibilidade reversa). A transição de status é registrada no commit que faz a mudança. `proposed` é o **mesmo estado de entrada de um ADR** — o vocabulário do futuro é unificado entre Feature e ADR (ADR-0047).
 
 O campo `contracts` é o mais importante porque torna o arquivo automaticamente verificável. Cada caminho referenciado deve apontar para um arquivo que existe no código (`src/api/search.py::search_endpoint` significa "função `search_endpoint` no módulo `src/api/search.py`"). O `feat-memory audit` checa estes caminhos e marca como drift qualquer referência quebrada.
@@ -136,6 +138,8 @@ Quando uma decisão é substituída, o ADR original tem apenas seu campo `supers
 
 Quando a substituição é apenas **parcial** — a decisão nova invalida só parte do ADR — não se deixa o original meio-válido. Marca-se o ADR-base inteiro como `superseded` e divide-se seu conteúdo em ADRs novos: um com a decisão nova, outro(s) re-afirmando a parte que continua válida, com o `superseded_by` do base listando todos os sucessores. Assim nenhum ADR vigente é parcialmente falso (ADR-0040).
 
+Superseder **propaga** (ADR-0050, F-0044): o `feat-memory audit` lista todo artefato vivo (features ativas, ADRs ativos, `AGENTS.md`, `UNRELEASED`) que ainda cita o ID do ADR antigo, e emite um warning por arquivo até que ele seja revisado e reconhecido. O acknowledgment é o campo `reconciled:` do ADR que supersede — uma lista de paths que o autor declara ter revisado quanto a citações do modelo antigo (citações históricas legítimas permanecem; citações apodrecidas são atualizadas). O checklist é referencial: prova que a revisão aconteceu e ficou registrada, não que foi bem feita — essa camada é da amostragem adversarial.
+
 ### Propostas de ADR (`.feat-memory/decisions/proposals/`)
 
 Drafts gerados pela ferramenta `feat-memory propose-adr` ficam em uma subpasta separada que o `feat-memory audit` ignora explicitamente. Drafts não são ADRs e não têm validade arquitetural — são pontos de partida para conversa. Quando um draft é revisado e aprovado, o arquivo é renomeado com slug definitivo e movido para `.feat-memory/decisions/`, momento em que passa a ser auditado normalmente.
@@ -163,6 +167,12 @@ A skill `memory-pull-brief` cobre o momento pós-`git pull` em projeto cliente q
 A separação em quatro skills em vez de uma reflete a estrutura real do trabalho com a metodologia: quatro momentos qualitativamente diferentes (adoção, início de sessão, fim de unidade, sincronização pós-pull), cada um com sua própria checklist e cada um com seus próprios riscos de ser executado errado. Skills monolíticas tendem a ser ignoradas; skills específicas e curtas tendem a ser invocadas no momento certo.
 
 A escolha de fazer da `memory-deploy` o ponto de entrada — em vez de exigir que o usuário invoque o `feat-memory deploy` diretamente — reflete uma decisão de design importante. O comando sozinho instala a estrutura mecânica mas não personaliza nada, o que deixa um projeto greenfield com `AGENTS.md` genérico inútil ou um projeto legacy com Manifest vazio que ignora todo o código existente. A skill envolve o comando com a inteligência necessária para que a instalação produza valor real desde o primeiro commit. O comando direto permanece disponível para automação e CI, onde personalização não se aplica.
+
+## Perfis de instalação
+
+O `feat-memory deploy --profile core|full` instala a metodologia em dois tamanhos (ADR-0050, F-0042). O perfil **core** — default para adoções novas — é a espinha de valor comprovado: constituição, decisions, `changelog/UNRELEASED.md` e features finas (registro frontmatter-only, orçamento de prosa de 10 linhas). O perfil **full** adiciona a operação completa de changelog (releases congelados por tag) e um orçamento de prosa maior (40 linhas) para racional curto em corpos de feature.
+
+O perfil vive em `.feat-memory/.meta.yaml` (`profile`, schema 2) e calibra as políticas do audit. Re-deploy sem a flag **preserva** o perfil gravado; instalações pré-v3 (meta sem o campo) resolvem para `full` em todos os caminhos de degradação — uma instalação existente nunca ganha warnings novos só porque a CLI avançou ("upgrade quando doer", ADR-0050/0051). Os perfis também tornam a tese do manifest falsificável por módulo: a condicional pré-registrada no ADR-0050 define o que condenaria (contaminação originada de feature fina) e o que absolveria (10 sessões frias ou 3 ciclos adversariais limpos) o conceito.
 
 ## Workflow de merge e rebase
 
@@ -194,7 +204,9 @@ No debrief, o agente registra o trabalho como uma entrada-bullet no `.feat-memor
 
 ## Auditoria
 
-O `feat-memory audit` produz um relatório de uma página com oito indicadores. Cada um responde uma pergunta operacional concreta sobre se o sistema está entregando valor ou virando burocracia.
+O `feat-memory audit` produz um relatório de uma página com os indicadores de saúde do projeto. Cada um responde uma pergunta operacional concreta sobre se o sistema está entregando valor ou virando burocracia.
+
+O que a auditoria garante — e declara no próprio relatório — é **integridade referencial e movimento conjunto** doc↔código: IDs que resolvem, paths que existem, artefatos que se movem juntos no commit. Ela **não** garante verdade semântica: um critério pode estar referencialmente íntegro e factualmente apodrecido (ADR-0050). Essa camada é responsabilidade da amostragem adversarial (seção adiante). Os issues têm três severidades: `error` (bloqueia sempre), `warning` (bloqueia sob `--strict`) e `info` — nudges heurísticos que **nunca** são promovidos e nunca mudam o exit code; o relatório humano os resume numa linha e o detalhe sai no `--json`.
 
 A **conformidade de schema** mede se todos os artefatos passam validação estrutural, incluindo a validação dos critérios de aceitação contra os padrões EARS. Qualquer erro aqui bloqueia o build — schemas inválidos significam que o agente vai consumir dados quebrados na próxima sessão.
 
@@ -214,7 +226,13 @@ A **saúde de decisões** mede a razão de substituição (superseded sobre tota
 
 ### Modo strict
 
-A flag `--strict` promove warnings (drift) a errors. Em modo padrão o `feat-memory audit` retorna exit 0 mesmo com drift presente, porque drift pode ser temporário (você refatorou e ainda vai atualizar o Manifest no próximo commit). Em modo strict, qualquer drift bloqueia. O modo strict é usado pelo pre-commit hook e deve ser usado pela CI.
+A flag `--strict` promove warnings (drift) a errors. Em modo padrão o `feat-memory audit` retorna exit 0 mesmo com drift presente, porque drift pode ser temporário (você refatorou e ainda vai atualizar o Manifest no próximo commit). Em modo strict, qualquer drift bloqueia. Issues de severidade `info` nunca são promovidos — nudge não vira coerção. O modo strict é usado pelo pre-commit hook e deve ser usado pela CI.
+
+## Amostragem adversarial
+
+O `feat-memory sample` cobre a camada que nenhum checker determinístico alcança: a **verdade semântica** dos critérios de aceite — o modo de falha em que um artefato foi revisado, atualizado no vocabulário, e mesmo assim manteve semântica apodrecida (ADR-0050, F-0045). A ferramenta sorteia features ativas ponderadas por risco — ADRs citados com status `superseded` pesam mais, assim como ADRs alterados depois do último commit da feature — e emite, em stdout, prompts de **refutação** para um agente LLM executar: "prove que este critério ainda é verdade no código; falhe ruidosamente se não conseguir". O prompt pede refutação, nunca confirmação — verificador que quer confirmar, confirma.
+
+A separação é a mesma do `propose-adr`: detecção e priorização são determinísticas e baratas (ficam na CLI); o julgamento exige ler código e fica no agente. O gatilho recomendado é **por evento** — após um supersede (`--event supersede`) e a cada release (`--event release`) — nunca por commit: o custo de LLM se concentra onde o risco se concentra. O comando sempre retorna exit 0: amostrar é convite, não gate. Um veredito REFUTADO alimenta a condição de falsificação pré-registrada do ADR-0050.
 
 ## Pre-commit hook
 

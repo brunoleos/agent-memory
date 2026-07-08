@@ -28,4 +28,4 @@
 | F-0045 | adversarial-sampling | shipped | 3.0.0 | ADR-0050 | — |
 | F-0046 | mechanism-lexicon-nudge | shipped | 3.0.0 | ADR-0050 | — |
 
-_Gerado por `feat-memory audit` em 2026-07-08T18:56:09+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-07-08T19:04:50+00:00. Não edite manualmente._

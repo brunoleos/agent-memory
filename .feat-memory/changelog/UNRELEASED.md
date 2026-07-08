@@ -19,6 +19,7 @@ retomada é derivado dessas referências. Vazio = nada em voo.
 - Nudge de léxico de mecanismo em critérios EARS, derivado dos ADRs, severidade info nunca promovida; report resume infos numa linha (F-0046, ADR-0050)
 - `feat-memory sample`: prompts de refutação adversarial ponderados por risco, gatilho por evento, sempre exit 0 (F-0045, ADR-0050)
 - Skills reformadas: gênese gera features frontmatter-only sem transcrever README; doutrina do observável na deploy/debrief; propagação de supersede e sample como rituais; teste do agente frio fecha todo debrief (ADR-0050)
+- Docs alinhadas à v3: METHODOLOGY (perfis, amostragem adversarial, reconciled, orçamento de prosa), README e USER_GUIDE atualizados do modelo STATE.md pré-2.0 para o changelog vivo — prosa paralela corrigida (ADR-0050, ADR-0051)
 
 ## Mudado
 

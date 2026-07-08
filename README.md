@@ -10,8 +10,10 @@ Quatro artefatos versionados que dão a um agente LLM tudo que ele precisa para 
 |---|---|---|
 | `AGENTS.md` | Sob quais regras construímos? | Rara |
 | `.feat-memory/manifest/` | O que existe hoje no sistema? | Append-only |
-| `.feat-memory/STATE.md` | Onde estamos agora? | Reescrita bounded |
+| `.feat-memory/changelog/` | O que está em voo / o que shippou? | UNRELEASED editável; releases imutáveis |
 | `.feat-memory/decisions/` | Por que escolhemos assim? | Imutável + supersede |
+
+A instalação tem dois perfis (ADR-0050): **core** (default em adoção nova) instala a espinha — constituição, decisions, `changelog/UNRELEASED.md` e features finas; **full** adiciona a operação completa de changelog e orçamento de prosa maior. Re-deploy preserva o perfil escolhido.
 
 ## Instalação
 
@@ -30,7 +32,7 @@ Em qualquer projeto consumidor, rode:
 feat-memory deploy /caminho/do/projeto
 ```
 
-Isso monta `AGENTS.md`, `CLAUDE.md`, `.feat-memory/STATE.md`, `.feat-memory/manifest/`, `.feat-memory/decisions/`, `skills/`, `.gitattributes`, e instala o pre-commit hook.
+Isso monta `AGENTS.md`, `CLAUDE.md`, `.feat-memory/changelog/UNRELEASED.md`, `.feat-memory/manifest/`, `.feat-memory/decisions/`, `.feat-memory/ideas.md`, `skills/`, `.gitattributes`, e instala o pre-commit hook — no perfil `core` por default (`--profile full` para a operação completa de changelog).
 
 Depois, abra uma sessão com seu agente preferido (Claude Code, Cursor, ou outro que reconheça `AGENTS.md`) e peça:
 
@@ -40,7 +42,7 @@ instale a metodologia neste projeto
 
 A skill `memory-deploy` detecta se o projeto é greenfield (novo, pouco código) ou legacy (com história substancial). Em greenfield, ela apenas executa o deploy mecânico — identidade, restrições, convenções e demais conteúdos específicos do projeto são autoria do mantenedor humano, escritos diretamente no `AGENTS.md` quando ele decidir que vale registrar.
 
-Para projetos legacy, a skill conduz adicionalmente gênese retroativa em três fases sequenciais com revisão humana entre cada uma: ADRs candidatos a partir do git log, Manifest a partir dos entrypoints públicos, e `.feat-memory/STATE.md` inicial. A skill nunca escreve no corpo da `AGENTS.md` fora do bloco delimitado por sentinelas — esse bloco é gerenciado mecanicamente pelo `feat-memory deploy`.
+Para projetos legacy, a skill conduz adicionalmente gênese retroativa multi-fonte com revisão humana entre as fases: evidências trianguladas (testes, telas, docs, código, deps; git secundário), Manifest de features finas a partir das capacidades, ADRs a partir das decisões, e `changelog/UNRELEASED.md` inicial vazio. A skill nunca escreve no corpo da `AGENTS.md` fora do bloco delimitado por sentinelas — esse bloco é gerenciado mecanicamente pelo `feat-memory deploy`.
 
 ## Comportamento com arquivos pré-existentes
 
@@ -55,15 +57,15 @@ O `feat-memory deploy` é idempotente em todas as superfícies que ele instala. 
 
 Quando o `AGENTS.md` já existe, o deploy só toca o conteúdo entre essas sentinelas — todo o resto (frontmatter, seções específicas do projeto, comentários do usuário) é preservado. Quando ainda não existe, o template completo é escrito (frontmatter scaffold + bloco). O `CLAUDE.md` (redirect mínimo `@AGENTS.md`) é copiado se ausente e deixado quieto se existe.
 
-O `.feat-memory/STATE.md` segue semântica diferente: como o conteúdo dele é volátil por construção, não há valor real em mesclar. Se já existe, é simplesmente pulado.
+O `.feat-memory/changelog/UNRELEASED.md` segue semântica diferente: como o conteúdo dele é volátil por construção, não há valor real em mesclar. Se já existe, é simplesmente pulado — o deploy nunca sobrescreve conteúdo do usuário nele (regra do postmortem ADR-0051).
 
 As skills em `skills/` são sempre reescritas a cada deploy, porque elas são conteúdo de metodologia (não de usuário). Se você quiser uma skill customizada, copie-a para um nome diferente (`skills/memory-debrief` → `skills/my-debrief`) — a versão renomeada é preservada. O `.gitattributes` segue a mesma lógica via bloco com sentinelas: o que estiver fora do bloco é preservado, o bloco em si é refrescado.
 
-A flag `--force` reescreve `AGENTS.md`, `CLAUDE.md` e `.feat-memory/STATE.md` inteiros a partir do template, descartando conteúdo do usuário fora do bloco. A flag `--no-merge` pula a refresh do bloco em `AGENTS.md`/`CLAUDE.md` existentes (útil em CI onde nenhuma modificação é desejada).
+A flag `--force` reescreve `AGENTS.md` e `CLAUDE.md` inteiros a partir do template, descartando conteúdo do usuário fora do bloco. A flag `--no-merge` pula a refresh do bloco em `AGENTS.md`/`CLAUDE.md` existentes (útil em CI onde nenhuma modificação é desejada).
 
 ## Versionamento e atualizações
 
-O pacote tem versionamento semântico em `VERSION` (lido pelo `pyproject.toml`) e changelog em [CHANGELOG.md](CHANGELOG.md). Cada release publicada em <https://github.com/brunoleos/feat-memory/releases> corresponde a uma tag `vX.Y.Z`. Para descobrir a versão instalada, rode `feat-memory --version` (em breve) ou `pipx list | grep feat-memory`.
+O pacote tem versionamento semântico em `VERSION` (lido pelo `pyproject.toml`) e histórico de releases em [.feat-memory/changelog/INDEX.md](.feat-memory/changelog/INDEX.md) (um arquivo imutável por tag, ADR-0042). Cada release publicada em <https://github.com/brunoleos/feat-memory/releases> corresponde a uma tag `vX.Y.Z`. Para descobrir a versão instalada, rode `feat-memory --version` ou `pipx list | grep feat-memory`.
 
 Em editable install, atualizar é simplesmente `git pull` no clone:
 
@@ -89,10 +91,12 @@ Quando o pacote estiver publicado na PyPI (planejado), o caminho de instalação
 Em CI ou automação sem intervenção humana, o `feat-memory deploy` pode ser invocado direto sem passar pela skill. Em ambientes onde refresh do bloco não é desejada, use `--no-merge`.
 
 ```bash
-feat-memory deploy <projeto>             # padrão: refresca bloco em AGENTS.md, copia CLAUDE.md se ausente
-feat-memory deploy <projeto> --no-merge  # pula AGENT/CLAUDE existentes (sem refresh do bloco)
-feat-memory deploy <projeto> --force     # reescreve AGENT/CLAUDE/STATE inteiros do template
-feat-memory deploy <projeto> --no-hooks  # pula instalação de git hooks
+feat-memory deploy <projeto>                 # padrão: perfil core (novo) ou o já gravado; refresca bloco em AGENTS.md
+feat-memory deploy <projeto> --profile full  # operação completa de changelog + orçamento de prosa maior
+feat-memory deploy <projeto> --no-merge      # pula AGENT/CLAUDE existentes (sem refresh do bloco)
+feat-memory deploy <projeto> --force         # reescreve AGENT/CLAUDE inteiros do template
+feat-memory deploy <projeto> --no-hooks      # pula instalação de git hooks
+feat-memory deploy <projeto> --dry-run       # mostra o que mudaria sem escrever nada
 ```
 
 A escolha entre skill e comando direto reflete os dois modos de uso. Para humanos adotando a metodologia em um projeto real, a skill é o caminho (em legacy ela faz a gênese retroativa de ADRs e Manifest, que o comando direto não faz). Para automação que apenas precisa da estrutura mecânica, o comando direto basta.
@@ -110,7 +114,6 @@ feat-memory/                         # clone do projeto na sua máquina
 ├── USER_GUIDE.md                     # manual prático para usuários
 ├── METHODOLOGY.md                    # doutrina completa
 ├── FUTURE_IMPROVEMENTS.md            # roadmap de extensões
-├── CHANGELOG.md                      # histórico de versões
 ├── VERSION                           # versão semântica atual (lida por pyproject)
 ├── src/
 │   └── feat_memory/                 # pacote Python (3 subpacotes, ADR-0021)
@@ -118,22 +121,29 @@ feat-memory/                         # clone do projeto na sua máquina
 │       ├── cli.py                    # entrypoint: feat-memory ...
 │       ├── deploy.py                 # subcomando deploy (top-level)
 │       ├── data/                     # package data compartilhado (vai no wheel)
-│       │   ├── templates/            # AGENTS.md, CLAUDE.md, STATE.md, .gitattributes
-│       │   └── skills/               # memory-deploy, memory-bootstrap, memory-debrief, memory-pull-brief
+│       │   ├── templates/            # AGENTS.md, CLAUDE.md, ideas.md, .gitattributes
+│       │   ├── skills/               # memory-deploy, memory-bootstrap, memory-debrief, memory-pull-brief
+│       │   └── agents/               # subagents (Claude Code)
 │       ├── shared/                   # utilitários sem deps do projeto
 │       │   ├── paths.py              # lazy-init de ROOT e paths derivados
-│       │   └── parsing.py            # parse_frontmatter, read_meta
+│       │   ├── parsing.py            # parse_frontmatter, read_meta, resolve_profile
+│       │   └── frontmatter.py        # detecção de frontmatter stale
 │       ├── memory/                   # artefatos canônicos + ciclo de vida
-│       │   ├── schemas.py            # validação de schema (EARS, etc.)
+│       │   ├── schemas.py            # validação de schema (EARS, orçamento de prosa)
 │       │   ├── indexing.py           # geração de INDEX.md
 │       │   ├── archive.py            # subcomando archive
-│       │   ├── checkpoints.py        # subcomando checkpoint
+│       │   ├── changelog.py          # subcomando release + UNRELEASED
 │       │   ├── propose_adr.py        # subcomando propose-adr
+│       │   ├── sample.py             # subcomando sample (refutação adversarial)
+│       │   ├── schema_reference.py   # subcomando schema
 │       │   └── migrate.py            # subcomando migrate
 │       └── governance/              # enforcement, métricas, telemetria, hooks
 │           ├── audit.py              # subcomando audit
+│           ├── constraints.py        # checkers declarativos de constraints
+│           ├── lexicon.py            # nudge de léxico de mecanismo (info)
 │           ├── telemetry.py          # subcomandos record / log
 │           ├── check_staleness.py    # check-staleness-staged
+│           ├── check_doc_sync.py     # check-doc-sync-staged
 │           ├── check_version_bump.py # check-version-bump-staged
 │           ├── version_check.py      # subcomando version-check
 │           ├── install_hooks.py      # helper de instalação de hooks
@@ -147,7 +157,7 @@ feat-memory/                         # clone do projeto na sua máquina
 
 ## Estrutura final no project root
 
-Depois da instalação, o seu repositório tem isto. Os artefatos versionados em Git são `AGENTS.md`, `CLAUDE.md`, `.feat-memory/STATE.md`, `.feat-memory/manifest/`, `.feat-memory/decisions/`, `skills/`, `.gitattributes`, e o bloco em `.gitignore`.
+Depois da instalação, o seu repositório tem isto. Os artefatos versionados em Git são `AGENTS.md`, `CLAUDE.md`, `.feat-memory/` (changelog, ideas, manifest, decisions, .meta.yaml), `skills/`, `.gitattributes`, e o bloco em `.gitignore`.
 
 ```text
 seu-projeto/
@@ -161,7 +171,11 @@ seu-projeto/
 │   ├── memory-debrief/SKILL.md
 │   └── memory-pull-brief/SKILL.md
 ├── .feat-memory/
-│   ├── STATE.md                      # foco da sessão
+│   ├── .meta.yaml                    # versão deployada + perfil (core|full)
+│   ├── ideas.md                      # funil de ideias cruas
+│   ├── changelog/
+│   │   ├── UNRELEASED.md             # trabalho em voo (volátil)
+│   │   └── (X.Y.Z.md imutáveis a cada release — perfil full)
 │   ├── manifest/
 │   │   ├── INDEX.md                  # gerado por feat-memory audit
 │   │   └── features/
@@ -181,9 +195,9 @@ A skill `memory-deploy` cobre a adoção inicial, executada uma única vez por p
 
 A skill `memory-bootstrap` cobre o início de cada sessão de trabalho. Frases como "onde paramos" ou "qual o status" ativam a skill, que carrega o contexto eficientemente e apresenta um briefing tático antes de prosseguir.
 
-A skill `memory-debrief` é a mais usada no dia-a-dia. Frases como "vou commitar" ou "atualize o STATE" ativam a skill, que examina o diff, atualiza o Manifest, reescreve o State, e gera proposta de ADR se necessário. Invoque-a antes de cada commit relevante.
+A skill `memory-debrief` é a mais usada no dia-a-dia. Frases como "vou commitar" ou "atualize a memória" ativam a skill, que examina o diff, atualiza o Manifest, registra o trabalho no `changelog/UNRELEASED.md`, gera proposta de ADR se necessário, e fecha com o teste do agente frio ("um agente frio responderia 'por que não X?' só com a memória?"). Invoque-a antes de cada commit relevante.
 
-A skill `memory-pull-brief` cobre o quarto momento crítico: depois de `git pull` que trouxe commits de colegas. Frases como "o que veio do pull" ou "brifa as mudanças do main" ativam a skill, que examina o diff trazido, identifica mudanças semânticas em `.feat-memory/manifest/`, `.feat-memory/decisions/` e no bloco metodológico de `AGENTS.md`, e propõe ajustes em `.feat-memory/STATE.md` para ressincronizar o foco local. É read-only sobre `.feat-memory/manifest/` e `.feat-memory/decisions/` — esses já vieram corretos do pull.
+A skill `memory-pull-brief` cobre o quarto momento crítico: depois de `git pull` que trouxe commits de colegas. Frases como "o que veio do pull" ou "brifa as mudanças do main" ativam a skill, que examina o diff trazido, identifica mudanças semânticas em `.feat-memory/manifest/`, `.feat-memory/decisions/` e no bloco metodológico de `AGENTS.md`, e propõe ajustes em `.feat-memory/changelog/UNRELEASED.md` para ressincronizar o foco local. É read-only sobre `.feat-memory/manifest/` e `.feat-memory/decisions/` — esses já vieram corretos do pull.
 
 ## Comandos úteis
 
@@ -207,6 +221,13 @@ O detector de candidatos para gênese retroativa é invocado pela skill `memory-
 
 ```bash
 feat-memory migrate --limit 200
+```
+
+A amostragem adversarial cobre a verdade semântica dos critérios de aceite, que o audit (referencial) não cobre: sorteia features ponderadas por risco e emite prompts de refutação para um agente LLM executar. Gatilho recomendado: após um supersede e a cada release.
+
+```bash
+feat-memory sample --event release          # prompts de refutação, exit 0 sempre
+feat-memory sample --count 5 --seed 42      # amostra maior, reprodutível
 ```
 
 ## Documentação
