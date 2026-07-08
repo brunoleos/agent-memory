@@ -23,5 +23,6 @@
 | F-0040 | deploy-dry-run | shipped | 2.4.0 | — | — |
 | F-0041 | frontmatter-staleness-warning | shipped | 2.5.0 | ADR-0049 | F-0040 |
 | F-0042 | deploy-profiles | shipped | 3.0.0 | ADR-0050 | — |
+| F-0043 | manifest-prose-budget | shipped | 3.0.0 | ADR-0050 | F-0042 |
 
-_Gerado por `feat-memory audit` em 2026-07-08T17:50:39+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-07-08T18:05:00+00:00. Não edite manualmente._

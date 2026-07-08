@@ -68,6 +68,12 @@ EARS_PATTERN_FIELDS: dict[str, set[str]] = {
 
 DEFAULT_STATE_BUDGET = 4096
 
+# Orçamento de prosa do corpo de uma feature, em linhas não-vazias, por perfil
+# (ADR-0050): a feature é um registro ortogonal (frontmatter com aceites e
+# ponteiros); prosa que reafirma outra fonte é memória paralela e drifta.
+# core proíbe por default; full tolera racional curto.
+PROSE_BUDGET_BY_PROFILE = {"core": 10, "full": 40}
+
 
 @dataclass
 class Issue:
@@ -162,15 +168,32 @@ def validate_ears_criterion(name: str, idx: int,
     return issues
 
 
-def validate_feature(path: Path) -> tuple[dict, list[Issue]]:
+def validate_feature(path: Path,
+                     prose_limit: int | None = None,
+                     profile: str | None = None) -> tuple[dict, list[Issue]]:
     issues: list[Issue] = []
     name = path.name
     if not FEATURE_FILE_RE.match(name):
         issues.append(Issue(name, "error", "nome inválido (esperado F-NNNN-slug.md)"))
     try:
-        fm, _ = parse_frontmatter(path)
+        fm, body = parse_frontmatter(path)
     except ValueError as e:
         return {}, [Issue(name, "error", str(e))]
+
+    # Orçamento de prosa por perfil (ADR-0050). Warning (promovível sob
+    # --strict): corpo é o lugar onde memória paralela se acumula. `None`
+    # desliga o check (chamadores que não conhecem o perfil, ex.: archive).
+    if prose_limit is not None:
+        prose_lines = sum(1 for ln in body.splitlines() if ln.strip())
+        if prose_lines > prose_limit:
+            label = f"perfil {profile}" if profile else "perfil"
+            issues.append(Issue(
+                name, "warning",
+                f"corpo com {prose_lines} linhas não-vazias excede o orçamento "
+                f"de prosa do {label} (limite {prose_limit}) — prosa que "
+                f"reafirma outra fonte drifta; mova racional para ADR e "
+                f"mantenha a feature como registro (ADR-0050)",
+            ))
 
     for key in FEATURE_REQUIRED:
         if key not in fm:

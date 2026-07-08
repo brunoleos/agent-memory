@@ -483,10 +483,18 @@ def run_audit(write_indices: bool = True,
             "active_decisions": active["decisions"],
         }
 
+    # Orçamento de prosa por perfil (ADR-0050): aplica só a features ATIVAS —
+    # archive é história imutável e não sofre política nova retroativa.
+    from feat_memory.memory.schemas import PROSE_BUDGET_BY_PROFILE
+    from feat_memory.shared.parsing import resolve_profile
+    profile = resolve_profile(_paths.ROOT)
+    prose_limit = PROSE_BUDGET_BY_PROFILE.get(profile)
+
     features: list[dict] = []
     if _paths.FEATURES_DIR.exists():
         for fp in sorted(_paths.FEATURES_DIR.glob("F-*.md")):
-            fm, issues = validate_feature(fp)
+            fm, issues = validate_feature(fp, prose_limit=prose_limit,
+                                          profile=profile)
             all_issues.extend(issues)
             if fm:
                 features.append(fm)
@@ -553,8 +561,7 @@ def run_audit(write_indices: bool = True,
     }
     # Perfil de governança (ADR-0050): calibra políticas dependentes de perfil
     # (ex.: orçamento de prosa do manifest). Fallback `full` protege pré-v3.
-    from feat_memory.shared.parsing import resolve_profile
-    metrics["profile"] = resolve_profile(_paths.ROOT)
+    metrics["profile"] = profile
     return {
         "metrics": metrics,
         "issues": [asdict(i) for i in all_issues],
