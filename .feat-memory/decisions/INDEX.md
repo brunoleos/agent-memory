@@ -45,5 +45,7 @@
 | ADR-0047 | 2026-06-26 | accepted | future,ideas,lifecycle,methodology | F-0038 |
 | ADR-0048 | 2026-06-26 | accepted | debrief,retrospective,methodology | F-0039 |
 | ADR-0049 | 2026-06-30 | accepted | process,refactor,testing,methodology | — |
+| ADR-0050 | 2026-07-08 | accepted | methodology,doctrine,profiles,manifest,audit,observability,governance,dogfooding | F-0042,F-0043,F-0044,F-0045,F-0046 |
+| ADR-0051 | 2026-07-08 | accepted | postmortem,migration,changelog,data-loss,upgrade,governance | — |
 
-_Gerado por `feat-memory audit` em 2026-06-30T19:47:20+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-07-08T06:35:20+00:00. Não edite manualmente._

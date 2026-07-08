@@ -17,6 +17,49 @@ A metodologia adota convenções consolidadas em vez de inventar vocabulário. O
 
 Há uma assimetria deliberada no outro sentido: o que **não** é artefato. O planejamento de uma sessão é efêmero — vive na conversa ou no plan mode da ferramenta — e **não** vira um quinto artefato persistente (um *spec* ou design doc longo). Um spec duplicaria o Manifest (o quê) e os ADRs (o porquê) e apodreceria como qualquer artefato que ninguém relê. O registro durável de uma sessão é ADR + Feature; a disciplina que torna isso seguro é escrevê-los cedo — ADRs como `proposed`, features como `planned` — para que a retomada dependa deles, e não de um plano que some no próximo reset de contexto (ADR-0041).
 
+## Doutrinas
+
+Quatro normas transversais governam todos os artefatos e skills. Elas nasceram de
+evidência de campo — dois stales encontrados por um agente frio num consumidor real,
+cada um provando uma doutrina distinta — e a procedência exata de cada uma está
+registrada no [ADR-0050](.feat-memory/decisions/0050-v3-reform-observability-and-profiles.md).
+
+### Memória errada é pior que memória nenhuma
+
+Um agente frio confia no que a memória afirma; um axioma falso absorvido da memória
+contamina toda a sessão sem deixar sintoma. O objetivo do sistema não é ter memória —
+é ter memória que não mente. Corolário operacional: afirmação sobre um artefato
+(inclusive a de um auditor) se verifica contra o artefato, nunca se repete de segunda
+mão.
+
+### Memória paralela drifta; memória ortogonal não consegue driftar
+
+Todo conteúdo que *reafirma* o que código, testes ou README já mostram é memória
+paralela: uma segunda fonte que inevitavelmente diverge da primeira. Todo conteúdo
+que registra o que o código não pode expressar — IDs estáveis, status, porquês,
+alternativas rejeitadas, trabalho em voo — é ortogonal: não há original com que
+divergir. A metodologia corta o paralelo e cultiva o ortogonal: prosa vive numa
+fonte só; artefatos de memória carregam ponteiros, não cópias.
+
+### Doutrina do observável
+
+Critérios de aceite só enunciam **observáveis externos** — o que se pode verificar
+de fora, sem citar o mecanismo interno. Mecanismo ("qual algoritmo", "qual estrutura
+de força") é território exclusivo de ADR: quando o mecanismo muda, o ADR é superseded
+e o critério observável sobrevive intacto. Duas delimitações: (1) quando o *como* é
+identidade do produto (a maneira é o valor), ele sobe à constituição como constraint
+e desce aos critérios apenas como **observáveis de trajetória** (propriedades do
+percurso, nunca nomes de algoritmo); (2) critérios só de estado final tendem ao
+tautológico — um mecanismo que viole a identidade também "chega ao fim" — então
+prefira observáveis que discriminem o comportamento ao longo do caminho.
+
+### Disciplina de procedência de evidência
+
+Toda mudança de metodologia ou reforma nomeia a evidência exata que a prova. Um
+incidente não pode ser alistado como prova de itens que ele não prova: inflar a
+procedência das próprias reformas é o mesmo pecado da memória que mente. Quando a
+evidência sustenta menos do que o texto reivindica, o texto encolhe.
+
 ## 1. Constitution: `AGENTS.md`
 
 O `AGENTS.md` é o ponto de entrada do projeto. Ele segue a convenção multi-agente que funciona com Claude Code, Cursor, Aider, Continue e outras ferramentas, eliminando a necessidade de uma "skill de bootstrap" customizada e de duplicar instruções por ferramenta. Um arquivo `CLAUDE.md` mínimo coexiste na raiz contendo apenas `@AGENTS.md`, que faz o Claude Code carregar a constituição via sintaxe de importação. Times que usam apenas uma ferramenta podem manter só o arquivo correspondente; times multi-agente compartilham a mesma constituição sem duplicação.
