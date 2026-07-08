@@ -18,7 +18,7 @@ Alvos por artefato:
 | Artefato         | Alvo      | Conteúdo                                                |
 |------------------|-----------|---------------------------------------------------------|
 | Entrada UNRELEASED | ≤ 1 linha | resumo curto, referenciando as F/ADR que toca           |
-| Feature F-*      | ≤ 1.5 KB  | `user_value` em 1 frase, 3–4 critérios EARS de 1 linha  |
+| Feature F-*      | ≤ 1.5 KB  | `user_value` em 1 frase, 3–4 critérios EARS de 1 linha; corpo dentro do orçamento de prosa do audit (ADR-0050) |
 | ADR              | ≤ 1.5 KB  | contexto + decisão + alternativas rejeitadas, todos curtos |
 
 Se passou do alvo, corte. Detalhes mecânicos já vivem no código e na mensagem do commit — não duplique.
@@ -34,7 +34,7 @@ Se passou do alvo, corte. Detalhes mecânicos já vivem no código e na mensagem
 Para cada feature cujo código foi tocado:
 - `status` se transitou (`proposed` → `in_progress` → `shipped` → `deprecated`)
 - `version` se a release mudou
-- `acceptance` apenas se o comportamento mudou (ajuste o critério existente; não duplique)
+- `acceptance` apenas se o comportamento mudou (ajuste o critério existente; não duplique). Critérios enunciam **observáveis externos, nunca mecanismo** — "usa algoritmo X" é vocabulário de ADR e apodrece quando o mecanismo muda (doutrina do observável, ADR-0050); quando a *maneira* é identidade do produto, ela vira constraint constitucional e o critério vira observável de trajetória
 - `metrics` apenas com medição real desta sessão; sem número, sem campo
 
 Se há capacidade nova sem entrada no Manifest, crie uma — formato em "Feature mínima" abaixo. ID = próximo número livre em `manifest/features/`.
@@ -51,7 +51,7 @@ O foco em-voo vive em `.feat-memory/changelog/UNRELEASED.md` (ADR-0043) — não
 
 O orçamento de retomada da próxima sessão é **derivado** dessas referências (ADR-0043) — por isso toda entrada cita as F/ADR que toca. O arquivo é volátil: edite direto, sem cerimônia.
 
-Ao lançar uma versão, `feat-memory release` congela o `UNRELEASED.md` em `changelog/<VERSION>.md`, commita e cria a tag `v<VERSION>` (ADR-0042/0045). O bump de `VERSION` continua per-commit; o `UNRELEASED` reinicia vazio.
+Ao lançar uma versão, `feat-memory release` congela o `UNRELEASED.md` em `changelog/<VERSION>.md`, commita e cria a tag `v<VERSION>` (ADR-0042/0045). O bump de `VERSION` continua per-commit; o `UNRELEASED` reinicia vazio. Release é gatilho de amostragem adversarial: rode `feat-memory sample --event release` e execute os prompts de refutação (ADR-0050) — é a camada que verifica a *verdade semântica* dos critérios, que o audit (referencial) não cobre.
 
 ### 4. Decida sobre ADR
 
@@ -60,6 +60,8 @@ Critério: se um contribuidor lendo o commit em 6 meses precisaria de explicaç�
 `feat-memory propose-adr --staged` gera draft em `.feat-memory/decisions/proposals/`. Preencha em três seções curtas (formato em "ADR mínimo" abaixo). Mova para `decisions/` só após revisão humana; atualize `affects_features`.
 
 **Superseding um ADR existente.** Quando esta sessão marca um ADR com `status: superseded` (e adiciona `superseded_by` apontando para o novo), mova o arquivo para `.feat-memory/decisions/superseded/` via `git mv` (ADR-0023, F-0019). IDs continuam resolvíveis pelo crosscheck e citáveis por `superseded_by` em ADRs novos; o move desonera o INDEX principal. Sem subcomando — operação manual.
+
+**Propagação do supersede (ADR-0050, F-0044).** Superseder não é evento silencioso: o próximo `feat-memory audit` lista todo artefato vivo que ainda cita o ADR antigo. Para cada citador, **revise o conteúdo** (a citação continua verdadeira sob a decisão nova?) e então: atualize a citação, ou registre o path em `reconciled:` do ADR que supersede (acknowledgment de citação histórica legítima). Nunca reconheça sem revisar — o checklist prova que a revisão aconteceu, não a substitui. Feche o ciclo rodando `feat-memory sample --event supersede`: os prompts de refutação cobrem o que o checklist referencial não cobre (critérios que citam o ADR *novo* mas mantêm semântica velha).
 
 **Supersede parcial (ADR-0040).** Se a decisão nova invalida só **parte** de um ADR, não deixe o base meio-válido (parte obsoleta + parte vigente no mesmo arquivo é ambíguo). Marque o base **inteiro** como `superseded` e divida em ADRs novos: um com a decisão nova, outro(s) re-afirmando a parte que continua válida. O `superseded_by` do base lista **todos** os sucessores. Assim todo ADR vigente é verdadeiro por inteiro.
 
@@ -96,6 +98,10 @@ Se a sessão produziu **ideias para o futuro** (uma capacidade, uma decisão a t
 
 Pergunte ao usuário **resolver agora** / **adiar** (entra no `ideas.md`) / **descartar** — nunca persista silenciosamente; duplicata de uma ideia já listada é só um bump de `occ`. **Na dúvida sobre o tipo, devolva a bifurcação ao usuário em vez de decidir sozinho.** O `ideas.md` é o estágio cru do pipeline (ideia → `proposed` → realizando → realizado) e o fallback de retomada quando o `UNRELEASED` está vazio.
 
+### 9. Teste do agente frio — a pergunta final de todo debrief
+
+Antes de encerrar, responda honestamente: **"um agente frio, chegando amanhã só com a memória, responderia 'por que não X?' para as alternativas que esta sessão rejeitou?"** A pergunta não é "documentei?" — é se a memória previne a re-litigação. Se a resposta é não, o que falta é quase sempre um ADR curto com a alternativa rejeitada e o motivo (a seção mais valiosa de um ADR). Registre agora, enquanto o porquê está fresco — é exatamente o conteúdo que nenhuma outra fonte (código, git, README) consegue expressar (ADR-0050).
+
 ## Feature mínima
 
 ```yaml
@@ -117,9 +123,11 @@ decisions: [ADR-NNNN]
 ---
 ```
 
-Sem corpo, a menos que registre algo que a frontmatter não comporta (trade-off não óbvio, link a issue externa). **Não duplique `user_value` numa seção "Comportamento" no body.**
+Sem corpo, a menos que registre algo que a frontmatter não comporta (trade-off não óbvio, link a issue externa). **Não duplique `user_value` numa seção "Comportamento" no body.** O audit avisa quando o corpo excede o orçamento do perfil (core: 10 linhas não-vazias; full: 40) — a feature é registro ortogonal, não documento (ADR-0050).
 
 Mantenha ≤ 4 critérios. Se está escrevendo `response: >` com 3 linhas YAML, ou condense para 1 linha, ou quebre em dois critérios menores. Se precisa enumerar todo caso de erro, está auditando — não documentando recall.
+
+**Critérios enunciam observáveis externos — mecanismo é território de ADR.** "Retorna sem sobreposição após estabilizar" é observável; "usa atrator central" é mecanismo e apodrece quando o mecanismo muda. Maneira que é identidade do produto vira constraint constitucional + observáveis de trajetória nos critérios (nunca nomes de algoritmo). O audit emite nudge `info` quando vocabulário de ADR aparece em critério (F-0046).
 
 ### Teste de uma capacidade (aplique ANTES de gravar qualquer feature)
 

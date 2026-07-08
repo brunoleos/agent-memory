@@ -18,6 +18,7 @@ retomada é derivado dessas referências. Vazio = nada em voo.
 - Propagação de supersede: citadores vivos de ADR superseded geram warning até acknowledgment por arquivo via `reconciled:` do superseder (F-0044, ADR-0050)
 - Nudge de léxico de mecanismo em critérios EARS, derivado dos ADRs, severidade info nunca promovida; report resume infos numa linha (F-0046, ADR-0050)
 - `feat-memory sample`: prompts de refutação adversarial ponderados por risco, gatilho por evento, sempre exit 0 (F-0045, ADR-0050)
+- Skills reformadas: gênese gera features frontmatter-only sem transcrever README; doutrina do observável na deploy/debrief; propagação de supersede e sample como rituais; teste do agente frio fecha todo debrief (ADR-0050)
 
 ## Mudado
 

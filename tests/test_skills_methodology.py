@@ -30,3 +30,38 @@ def test_bootstrap_reads_unreleased_and_ideas_fallback():
     text = _skill("memory-bootstrap")
     assert "UNRELEASED" in text
     assert "ideas.md" in text
+
+
+# --- reforma v3 (ADR-0050): doutrinas nas skills ---------------------------
+
+
+def test_debrief_ends_with_cold_agent_test():
+    """A pergunta final de todo debrief é o teste do agente frio."""
+    text = _skill("memory-debrief")
+    assert "agente frio" in text
+    assert "por que não X?" in text
+
+
+def test_debrief_carries_observable_doctrine():
+    text = _skill("memory-debrief")
+    assert "observáveis externos" in text
+    assert "mecanismo é território de ADR" in text
+
+
+def test_debrief_propagates_supersede_and_samples():
+    text = _skill("memory-debrief")
+    assert "reconciled" in text
+    assert "feat-memory sample --event supersede" in text
+    assert "feat-memory sample --event release" in text
+
+
+def test_deploy_genesis_forbids_readme_transcription():
+    text = _skill("memory-deploy")
+    assert "frontmatter-only" in text
+    assert "Nunca transcreva prosa de README" in text
+
+
+def test_deploy_genesis_carries_observable_doctrine():
+    text = _skill("memory-deploy")
+    assert "observáveis externos" in text
+    assert "observáveis de trajetória" in text

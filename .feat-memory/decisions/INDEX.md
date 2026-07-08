@@ -48,4 +48,4 @@
 | ADR-0050 | 2026-07-08 | accepted | methodology,doctrine,profiles,manifest,audit,observability,governance,dogfooding | F-0042,F-0043,F-0044,F-0045,F-0046 |
 | ADR-0051 | 2026-07-08 | accepted | postmortem,migration,changelog,data-loss,upgrade,governance | — |
 
-_Gerado por `feat-memory audit` em 2026-07-08T18:40:34+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-07-08T18:56:09+00:00. Não edite manualmente._

@@ -37,6 +37,8 @@ adicione-as e mantenha-as fora do bloco delimitado abaixo. -->
 
 Sessões começam por `.feat-memory/changelog/UNRELEASED.md` (trabalho em voo) e `.feat-memory/manifest/INDEX.md` (mapa de capacidades). Detalhes de uma feature ficam em `.feat-memory/manifest/features/F-NNNN-*.md`. Decisões arquiteturais em `.feat-memory/decisions/`. O histórico de releases vive em `.feat-memory/changelog/<tag>.md`. A metodologia completa está documentada no repositório do feat-memory: <https://github.com/brunoleos/feat-memory/blob/v{VERSION}/METHODOLOGY.md>.
 
+Doutrina do observável: critérios de aceite enunciam observáveis externos, nunca mecanismo (mecanismo é território de ADR); quando o "como" é identidade do produto, ele vive aqui na constituição como constraint, e desce aos critérios só como observáveis de trajetória. Features são registros ortogonais — frontmatter com aceites e ponteiros; prosa que reafirma outra fonte drifta.
+
 Este bloco é refrescado a cada `feat-memory deploy`. Não edite diretamente — mudanças aqui são sobrescritas no próximo redeploy. Conteúdo específico do projeto vai fora das marcações HTML que delimitam este bloco.
 
 ### Skills disponíveis

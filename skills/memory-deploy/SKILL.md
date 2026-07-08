@@ -55,7 +55,7 @@ O deploy deixou o frontmatter como esqueleto (legacy sem frontmatter) ou templat
 
 - **project**: o nome do projeto. Fato observável (nome do diretório/repositório) — proponha direto.
 - **stack**: detectável dos manifestos (`package.json`, `pyproject.toml`, `go.mod`, …) e da estrutura. Proponha `language`, `architecture` e as deps de runtime relevantes que você observa.
-- **constraints**: rascunhe a partir de evidência mecânica — regras impostas por tooling (configs de lint/formatter), gates de CI (suíte obrigatória, build), dependências fixadas/evitadas, e lições/avisos já escritos em prosa na AGENTS.md. Para cada uma, proponha `id`, `severity` (`hard`|`soft`) e `rule`; marque-as explicitamente como **rascunho**.
+- **constraints**: rascunhe a partir de evidência mecânica — regras impostas por tooling (configs de lint/formatter), gates de CI (suíte obrigatória, build), dependências fixadas/evitadas, e lições/avisos já escritos em prosa na AGENTS.md. Para cada uma, proponha `id`, `severity` (`hard`|`soft`) e `rule`; marque-as explicitamente como **rascunho**. Inclua candidatas de **identidade**: quando o *como* do produto é o próprio valor (ex.: "o movimento é orgânico, por tendências de força"), esse "como" pertence à constituição como constraint — nunca a critérios de aceite (doutrina do observável, ADR-0050).
 
 Apresente o frontmatter proposto inteiro para o mantenedor revisar, editar e aprovar. Gravar valores não-aprovados como se fossem decisão oficial é tão grave quanto cristalizar um ADR sem revisão. Após a aprovação, grave no frontmatter e rode `feat-memory audit` para confirmar conformidade.
 
@@ -94,9 +94,11 @@ Varra as seis fontes na ordem acima, registrando para cada achado a **fonte** e 
 
 Para cada capacidade, proponha uma feature com ID monotônico, `status: shipped`, `user_value` baseado no que faz para o usuário (não na implementação técnica — prefira a linguagem das telas/README à dos identificadores), `contracts` apontando para arquivos reais (inclua o **arquivo de teste** que cobre a capacidade — é o contrato executável), e `acceptance` em notação EARS **derivada diretamente das asserções dos testes** quando existirem, ou inferida do comportamento observável (docstrings, rotas, telas) quando não. Quando uma capacidade não tem teste nem doc que a sustente — só o seu palpite — marque-a como hipótese de baixa confiança ou deixe-a fora (cobertura honesta).
 
+**Critérios só enunciam observáveis externos — nunca mecanismo** (doutrina do observável, ADR-0050). "Retorna os nós sem sobreposição após estabilizar" é observável; "usa atrator central com collision layers" é mecanismo — vocabulário de ADR que apodrece junto com o mecanismo quando ele muda. Quando a *maneira* é identidade do produto, ela sobe à constituição como constraint (Etapa 2.1) e desce aos critérios como **observáveis de trajetória** ("movimento contínuo durante o assentamento", "sem teleporte"), nunca como nomes de algoritmo. Critérios só de estado final tendem ao tautológico; prefira observáveis que discriminem o comportamento ao longo do caminho.
+
 Não inclua `metrics` na gênese inicial — métricas só aparecem quando há medições reais. Apresente as features em lotes pequenos (cinco por vez no máximo). Lotes grandes desencorajam revisão crítica.
 
-Mantenha cada arquivo de feature **enxuto**: uma capacidade, `user_value` em uma frase, `contracts`/`acceptance` só o essencial. Não há limite mecânico de tamanho — um arquivo inchado sinaliza feature mal-escopada (provavelmente duas), não rico. Rode `feat-memory schema` para o vocabulário exato de campos (obrigatórios, opcionais, patterns EARS).
+**A feature é um registro, não um documento** (doutrina da ortogonalidade, ADR-0050): gere features **frontmatter-only** — id, status, `user_value` em uma frase, aceites, ponteiros. **Nunca transcreva prosa de README/docs para o corpo** — prosa que reafirma outra fonte é memória paralela e drifta (foi o vetor de um incidente real de contaminação de agente). O audit avisa quando o corpo excede o orçamento do perfil (core: 10 linhas não-vazias; full: 40); corpo, quando existir, guarda só racional que nenhum outro artefato abriga. Um arquivo inchado sinaliza feature mal-escopada (provavelmente duas). Rode `feat-memory schema` para o vocabulário exato de campos (obrigatórios, opcionais, patterns EARS).
 
 Aplique a cada feature o **"Teste de uma capacidade"** (detalhado na skill `memory-debrief`): user_value numa frase sem emendar assuntos; `acceptance` coesos; nome = substantivo de capacidade (o audit bloqueia nomes-balde, ADR-0035); bugfix/cleanup não vira feature. Nunca agrupe várias capacidades num arquivo "guarda-chuva".
 
@@ -131,5 +133,7 @@ Não tente cobrir cem por cento das decisões históricas ou dos entrypoints na 
 Não invente `metrics` ou medições estimadas. Se não há valor real medido, omita o campo. Métricas inventadas comprometem a credibilidade do Manifest todo.
 
 Não inclua features para detalhes de implementação puramente internos. A unidade do Manifest é capacidade nomeável com `user_value` em uma frase.
+
+Não transcreva prosa de README/docs para corpos de features, e não enuncie mecanismo em critérios de aceite. As duas coisas são os dois modos de falha comprovados de memória que mente: prosa paralela drifta sem reconciliação, e mecanismo em critério apodrece junto com o mecanismo (ADR-0050).
 
 Não confunda os dois fluxos de criação de ADR. Na gênese retroativa, ADRs vão diretamente para `.feat-memory/decisions/` porque são reconstruções históricas. Em uso normal (skill `memory-debrief`), ADRs novos vão para `.feat-memory/decisions/proposals/` primeiro.
