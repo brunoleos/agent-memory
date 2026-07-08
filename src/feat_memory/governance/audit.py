@@ -60,6 +60,7 @@ __all__ = [
     "validate_state_crosscheck",
     "validate_state_freshness",
     "validate_release_status",
+    "validate_supersede_reconciliation",
     "check_constraints",
     "released_versions",
     "STALENESS_WARN_HOURS",
@@ -123,6 +124,113 @@ def validate_state_crosscheck(state_fm: dict,
                 "changelog/UNRELEASED.md", "error",
                 f"entrada cita {did} mas nenhum arquivo "
                 f"NNNN-*.md existe em decisions/",
+            ))
+
+    return issues
+
+
+def _as_id_list(value) -> list[str]:
+    """Normaliza supersedes/superseded_by: None → [], escalar → [str], lista → strs."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return [str(v) for v in value if v]
+    return [str(value)]
+
+
+def validate_supersede_reconciliation() -> list[Issue]:
+    """Propagação de supersede (ADR-0050, F-0044): quando um ADR é superseded,
+    todo artefato VIVO que ainda cita o ID antigo exige acknowledgment por
+    arquivo — listar o path em `reconciled:` do ADR que supersede (após revisar
+    o citador), ou atualizar/remover a citação.
+
+    Referencial por construção (match textual de `ADR-NNNN`): garante que a
+    revisão aconteceu e ficou registrada — não que foi bem feita (verdade
+    semântica é a camada da amostragem adversarial). Cobre o modo de falha
+    "nunca-revisitado".
+
+    Escopo vivo: manifest/features/, decisions/ ativas, AGENTS.md e
+    changelog/UNRELEASED.md. Isentos: manifest/archive/, decisions/superseded/
+    e releases congelados (história imutável), o próprio ADR antigo, e os
+    superseders (auto-reconciliados pela declaração de `supersedes`).
+    """
+    issues: list[Issue] = []
+
+    def _load_dir(directory: Path) -> list[tuple[Path, dict]]:
+        out: list[tuple[Path, dict]] = []
+        if not directory.exists():
+            return out
+        for dp in sorted(directory.glob("[0-9]*.md")):
+            if dp.parent != directory:
+                continue
+            try:
+                fm, _ = parse_frontmatter(dp)
+            except ValueError:
+                continue  # malformado já é error de validate_decision
+            if fm.get("id"):
+                out.append((dp, fm))
+        return out
+
+    active = _load_dir(_paths.DECISIONS_DIR)
+    superseded = _load_dir(_paths.SUPERSEDED_DIR)
+
+    old_ids = {
+        fm["id"]
+        for _, fm in active + superseded
+        if fm.get("status") == "superseded" or _as_id_list(fm.get("superseded_by"))
+    }
+    if not old_ids:
+        return issues
+
+    # Artefatos vivos a varrer por citações.
+    from feat_memory.memory import changelog as _changelog
+    scan_files: list[Path] = []
+    if _paths.FEATURES_DIR.exists():
+        scan_files.extend(sorted(_paths.FEATURES_DIR.glob("F-*.md")))
+    scan_files.extend(dp for dp, _ in active)
+    if _paths.AGENT.exists():
+        scan_files.append(_paths.AGENT)
+    unreleased = _changelog.unreleased_path(_paths.ROOT)
+    if unreleased.exists():
+        scan_files.append(unreleased)
+
+    for old_id in sorted(old_ids):
+        supersessors = [
+            (dp, fm) for dp, fm in active + superseded
+            if old_id in _as_id_list(fm.get("supersedes"))
+        ]
+        supersessor_ids = [fm["id"] for _, fm in supersessors]
+        exempt_paths = {dp.resolve() for dp, _ in supersessors}
+        # O arquivo do próprio ADR antigo (auto-citação, superseded_by).
+        exempt_paths.update(
+            dp.resolve() for dp, fm in active + superseded if fm["id"] == old_id
+        )
+        reconciled_paths = {
+            (_paths.ROOT / p).resolve()
+            for _, fm in supersessors
+            for p in (fm.get("reconciled") or [])
+            if isinstance(p, str)
+        }
+
+        pattern = re.compile(rf"\b{re.escape(old_id)}\b")
+        for f in scan_files:
+            rf_ = f.resolve()
+            if rf_ in exempt_paths or rf_ in reconciled_paths:
+                continue
+            try:
+                text = f.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if not pattern.search(text):
+                continue
+            rel = f.resolve().relative_to(_paths.ROOT.resolve()).as_posix() \
+                if f.resolve().is_relative_to(_paths.ROOT.resolve()) else f.name
+            new_ref = ", ".join(supersessor_ids) if supersessor_ids else "?"
+            issues.append(Issue(
+                rel, "warning",
+                f"cita {old_id} (superseded por {new_ref}) sem reconciliação — "
+                f"revise o conteúdo e registre este path em `reconciled:` do "
+                f"ADR que supersede, ou atualize a citação (ADR-0050)",
             ))
 
     return issues
@@ -532,6 +640,10 @@ def run_audit(write_indices: bool = True,
 
     # Cross-check de IDs ativos contra arquivos existentes (ADR-0014).
     all_issues.extend(validate_state_crosscheck(state_fm, all_features, all_decisions))
+
+    # Propagação de supersede: citadores vivos de ADR antigo exigem
+    # acknowledgment por arquivo via `reconciled:` (ADR-0050, F-0044).
+    all_issues.extend(validate_supersede_reconciliation())
 
     # Cross-check status vs. release: feature in_progress já released é
     # memória mentirosa (ADR-0024). Default-on, soft, fail-soft sem CHANGELOG/tags.

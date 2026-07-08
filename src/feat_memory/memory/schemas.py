@@ -54,7 +54,8 @@ FEATURE_OPTIONAL = [
     "version", "owner", "introduced", "depends_on", "decisions", "metrics",
 ]
 DECISION_OPTIONAL = [
-    "version", "supersedes", "superseded_by", "affects_features", "related", "tags",
+    "version", "supersedes", "superseded_by", "affects_features", "related",
+    "tags", "reconciled",
 ]
 
 EARS_PATTERN_FIELDS: dict[str, set[str]] = {
@@ -275,5 +276,26 @@ def validate_decision(path: Path) -> tuple[dict, list[Issue]]:
             f"version inválido: {version!r} "
             f"(esperado X.Y.Z, prefixo 'v' opcional, ou ausente)",
         ))
+
+    # `reconciled` (ADR-0050): acknowledgment por arquivo da propagação de
+    # supersede. Lista de paths repo-relativos que este ADR (o superseder)
+    # declara revisados quanto a citações do ADR antigo. Forma inválida é
+    # error; path inexistente é warning (acknowledgment stale).
+    reconciled = fm.get("reconciled")
+    if reconciled is not None:
+        if (not isinstance(reconciled, list)
+                or not all(isinstance(p, str) for p in reconciled)):
+            issues.append(Issue(
+                name, "error",
+                "reconciled deve ser uma lista de paths repo-relativos (strings)",
+            ))
+        else:
+            for p in reconciled:
+                if not (_paths.ROOT / p).exists():
+                    issues.append(Issue(
+                        name, "warning",
+                        f"reconciled cita path inexistente: {p} "
+                        f"(acknowledgment stale — atualize ou remova)",
+                    ))
 
     return fm, issues

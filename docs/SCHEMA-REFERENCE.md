@@ -32,7 +32,7 @@ Gerado de `feat_memory.memory.schemas` (fonte única). Não edite à mão — ro
 
 - **Nome do arquivo:** `^\d{4}-[a-z0-9-]+\.md$`
 - **Obrigatórios:** `id`, `date`, `status`
-- **Opcionais reconhecidos:** `version`, `supersedes`, `superseded_by`, `affects_features`, `related`, `tags`
+- **Opcionais reconhecidos:** `version`, `supersedes`, `superseded_by`, `affects_features`, `related`, `tags`, `reconciled`
 - `status` ∈ {`accepted`, `deprecated`, `proposed`, `superseded`}
 - `version` (opcional): SemVer `^v?\d+\.\d+\.\d+$` (prefixo `v` aceito).
 

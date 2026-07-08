@@ -15,6 +15,7 @@ retomada é derivado dessas referências. Vazio = nada em voo.
 - Seção "Doutrinas" na METHODOLOGY: memória-errada, ortogonalidade, observável, procedência (ADR-0050)
 - Perfis de deploy `--profile core|full`; core default em instalação nova, re-deploy preserva perfil, meta schema v2 (F-0042, ADR-0050)
 - Orçamento de prosa no corpo de features por perfil (core 10 / full 40 linhas não-vazias), warning do audit; archive isento (F-0043, ADR-0050)
+- Propagação de supersede: citadores vivos de ADR superseded geram warning até acknowledgment por arquivo via `reconciled:` do superseder (F-0044, ADR-0050)
 
 ## Mudado
 
