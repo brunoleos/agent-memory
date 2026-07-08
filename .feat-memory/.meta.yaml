@@ -4,9 +4,11 @@
 # para que ferramentas externas e a própria CLI (audit, telemetria) saibam
 # contra qual versão a estrutura foi produzida.
 #
-# Schema documentado em ADR-0013. Não edite manualmente — re-rode deploy.
+# Schema documentado em ADR-0013; `profile` (core|full) em ADR-0050.
+# Não edite manualmente — re-rode deploy (com --profile para mudar).
 
-schema_version: 1
-version: 2.5.0
-deployed_at: '2026-06-30T19:47:18+00:00'
+schema_version: 2
+version: 2.7.0
+profile: full
+deployed_at: '2026-07-08T17:50:37+00:00'
 telemetry_enabled: true

@@ -307,18 +307,43 @@ META_HEADER = (
     "# para que ferramentas externas e a própria CLI (audit, telemetria) saibam\n"
     "# contra qual versão a estrutura foi produzida.\n"
     "#\n"
-    "# Schema documentado em ADR-0013. Não edite manualmente — re-rode deploy.\n"
+    "# Schema documentado em ADR-0013; `profile` (core|full) em ADR-0050.\n"
+    "# Não edite manualmente — re-rode deploy (com --profile para mudar).\n"
     "\n"
 )
 
 
-def deploy_meta(target: Path, dry_run: bool = False) -> int:
-    """Grava .feat-memory/.meta.yaml com versão e timestamp.
+def _resolve_deploy_profile(target: Path, profile_flag: str | None) -> str:
+    """Perfil a gravar no .meta.yaml (ADR-0050).
+
+    Resolução: flag explícita > profile já gravado > default por estado da
+    instalação. O default distingue instalação nova de upgrade: target virgem
+    (sem .meta.yaml) recebe `core`; instalação pré-v3 (meta sem `profile`)
+    recebe `full`, preservando o comportamento efetivo que ela já tinha —
+    um re-deploy de rotina nunca rebaixa um consumidor para core.
+    """
+    if profile_flag:
+        return profile_flag
+    from feat_memory.shared.parsing import VALID_PROFILES, read_meta
+    try:
+        meta = read_meta(target)
+    except ValueError:
+        meta = {}
+    if meta is None:
+        return "core"
+    existing = str(meta.get("profile") or "").strip().lower()
+    return existing if existing in VALID_PROFILES else "full"
+
+
+def deploy_meta(target: Path, dry_run: bool = False,
+                profile_flag: str | None = None) -> int:
+    """Grava .feat-memory/.meta.yaml com versão, timestamp e perfil.
 
     Idempotente por construção: cada deploy sobrescreve o arquivo com os
     valores correntes. Schema definido em ADR-0013; `cli_path` removido em
-    ADR-0034 (era caminho absoluto, local, da máquina do autor, versionado no
-    Git sem nenhum consumidor que o lesse).
+    ADR-0034; `profile` e `schema_version: 2` adicionados em ADR-0050.
+    O perfil é resolvido por `_resolve_deploy_profile` (flag > existente >
+    default por estado), então re-deploy sem flag preserva a escolha.
 
     Sob `dry_run`, não escreve. O `.meta.yaml` carrega um `deployed_at` que
     muda a cada deploy, então é sempre reportado como mudança.
@@ -334,11 +359,13 @@ def deploy_meta(target: Path, dry_run: bool = False) -> int:
     feat_memory_dir = target / ".feat-memory"
     dst = feat_memory_dir / ".meta.yaml"
     existed = dst.exists()
+    profile = _resolve_deploy_profile(target, profile_flag)
 
     if not dry_run:
         data = {
-            "schema_version": 1,
+            "schema_version": 2,
             "version": __version__,
+            "profile": profile,
             "deployed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "telemetry_enabled": True,
         }
@@ -348,7 +375,7 @@ def deploy_meta(target: Path, dry_run: bool = False) -> int:
 
     verb = _verb("atualizado", "atualizaria", dry_run) if existed \
         else _verb("criado", "criaria", dry_run)
-    print(f"  {verb}: .feat-memory/.meta.yaml (v{__version__})")
+    print(f"  {verb}: .feat-memory/.meta.yaml (v{__version__}, profile {profile})")
     return 1
 
 
@@ -786,6 +813,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
                    help="pula instalação de git hooks")
     p.add_argument("--dry-run", action="store_true",
                    help="mostra o que mudaria sem escrever nada")
+    p.add_argument("--profile", choices=["core", "full"], default=None,
+                   help="perfil da metodologia (ADR-0050): core = constituição "
+                        "+ decisions + UNRELEASED + features finas (default em "
+                        "instalação nova); full = adiciona changelog completo e "
+                        "orçamento de prosa maior. Sem a flag, re-deploy "
+                        "preserva o perfil já gravado no .meta.yaml")
     p.set_defaults(func=run)
 
 
@@ -832,7 +865,7 @@ def run(args: argparse.Namespace) -> int:
     changes += fc
     print()
 
-    changes += deploy_meta(target, dry_run)
+    changes += deploy_meta(target, dry_run, getattr(args, "profile", None))
     print()
 
     changes += deploy_changelog(target, dry_run)

@@ -551,6 +551,10 @@ def run_audit(write_indices: bool = True,
         "violations": cc["violations"],
         "pass": cc["violations"] == 0,
     }
+    # Perfil de governança (ADR-0050): calibra políticas dependentes de perfil
+    # (ex.: orçamento de prosa do manifest). Fallback `full` protege pré-v3.
+    from feat_memory.shared.parsing import resolve_profile
+    metrics["profile"] = resolve_profile(_paths.ROOT)
     return {
         "metrics": metrics,
         "issues": [asdict(i) for i in all_issues],
@@ -564,6 +568,7 @@ def print_report(result: dict) -> None:
     print("(integridade referencial e movimento conjunto — não verdade semântica)")
     print("=" * 60)
     print(f"Project root:              {_paths.ROOT}")
+    print(f"Perfil de governança:      {m.get('profile', 'full')}")
     print(f"Conformidade de schema:    {m['schema_compliance']:.2f}")
     cc = m.get("constraint_conformance") or {}
     if cc.get("checked"):

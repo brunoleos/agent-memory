@@ -71,3 +71,23 @@ def read_meta(root: Path) -> dict | None:
         return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except yaml.YAMLError as e:
         raise ValueError(f"YAML inválido em {path}: {e}") from e
+
+
+VALID_PROFILES = {"core", "full"}
+
+
+def resolve_profile(root: Path) -> str:
+    """Perfil efetivo do consumidor para fins de governança (ADR-0050).
+
+    Lê `profile` do `.meta.yaml`. Fallback `full` em todos os caminhos de
+    degradação (meta ausente, campo ausente, valor inválido, YAML corrompido):
+    uma instalação pré-v3 não pode ganhar warnings novos de repente só porque
+    a CLI avançou — `core` é opt-in gravado pelo deploy, nunca inferido
+    ("upgrade quando doer").
+    """
+    try:
+        meta = read_meta(root) or {}
+    except ValueError:
+        return "full"
+    profile = str(meta.get("profile") or "").strip().lower()
+    return profile if profile in VALID_PROFILES else "full"
