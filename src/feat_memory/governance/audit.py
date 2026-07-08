@@ -645,6 +645,11 @@ def run_audit(write_indices: bool = True,
     # acknowledgment por arquivo via `reconciled:` (ADR-0050, F-0044).
     all_issues.extend(validate_supersede_reconciliation())
 
+    # Nudge de léxico de mecanismo em critérios EARS: severidade `info`,
+    # nunca promovida — heurística, jamais gate (ADR-0050, F-0046).
+    from feat_memory.governance import lexicon as _lexicon
+    all_issues.extend(_lexicon.check_mechanism_lexicon())
+
     # Cross-check status vs. release: feature in_progress já released é
     # memória mentirosa (ADR-0024). Default-on, soft, fail-soft sem CHANGELOG/tags.
     all_issues.extend(validate_release_status(all_features, released_versions(_paths.ROOT)))
@@ -730,9 +735,14 @@ def print_report(result: dict) -> None:
               f"({by_sev['error']} error, {by_sev['warning']} warning, "
               f"{by_sev['info']} info)")
         for i in issues:
-            print(f"  [{i['severity']}] {i['artifact']}: {i['message']}")
+            if i["severity"] != "info":
+                print(f"  [{i['severity']}] {i['artifact']}: {i['message']}")
+        # Infos são nudges heurísticos, nunca promovidos por --strict:
+        # o report resume para não afogar errors/warnings (nem o pre-commit);
+        # o detalhe completo vive no `audit --json`.
         if by_sev["info"]:
-            print("  (info = nudge heurístico; nunca promovido por --strict)")
+            print(f"  [info] {by_sev['info']} nudge(s) heurístico(s) — "
+                  f"detalhe via `feat-memory audit --json`")
     else:
         print("Nenhum issue encontrado.")
 

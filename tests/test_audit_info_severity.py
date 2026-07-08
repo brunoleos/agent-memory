@@ -77,7 +77,8 @@ def test_mixed_info_and_warning_under_strict(monkeypatch):
 
 
 def test_report_segregates_info_count(capsys):
-    """print_report exibe contagem por severidade e a nota sobre info."""
+    """print_report exibe contagem por severidade; infos são resumidos numa
+    linha (detalhe via --json) para não afogar errors/warnings."""
     result = {
         "metrics": METRICS_STUB,
         "issues": [_issue("info"), _issue("warning")],
@@ -86,7 +87,10 @@ def test_report_segregates_info_count(capsys):
     out = capsys.readouterr().out
     assert "1 warning" in out
     assert "1 info" in out
-    assert "nunca promovido por --strict" in out
+    assert "nudge(s) heurístico(s)" in out
+    # o warning é listado individualmente; o info não (só no resumo)
+    assert "[warning] x.md: m" in out
+    assert "[info] x.md: m" not in out
 
 
 def test_report_states_referential_scope(capsys):

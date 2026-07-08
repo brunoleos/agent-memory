@@ -25,5 +25,6 @@
 | F-0042 | deploy-profiles | shipped | 3.0.0 | ADR-0050 | — |
 | F-0043 | manifest-prose-budget | shipped | 3.0.0 | ADR-0050 | F-0042 |
 | F-0044 | supersede-reconciliation | shipped | 3.0.0 | ADR-0050 | — |
+| F-0046 | mechanism-lexicon-nudge | shipped | 3.0.0 | ADR-0050 | — |
 
-_Gerado por `feat-memory audit` em 2026-07-08T18:18:59+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-07-08T18:31:49+00:00. Não edite manualmente._
