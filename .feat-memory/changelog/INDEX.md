@@ -5,6 +5,7 @@ Histórico por tag — um arquivo imutável por versão (ADR-0042).
 
 | Versão | Data | Resumo |
 |---|---|---|
+| 3.0.0 | 2026-07-08 | Trabalho concluído mas ainda não tagueado. Cada entrada referencia as |
 | 2.5.0 | 2026-06-30 | Trabalho concluído mas ainda não tagueado. Cada entrada referencia as |
 | 2.4.0 | 2026-06-30 | Trabalho concluído mas ainda não tagueado. Cada entrada referencia as |
 | 2.3.2 | 2026-06-30 | Trabalho concluído mas ainda não tagueado. Cada entrada referencia as |
