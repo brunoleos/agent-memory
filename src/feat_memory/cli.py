@@ -15,6 +15,7 @@ from feat_memory.memory import (
     changelog,
     migrate,
     propose_adr,
+    sample,
     schema_reference,
 )
 from feat_memory.governance import (
@@ -34,8 +35,9 @@ def main(argv: list[str] | None = None) -> int:
             "Persistent memory methodology for LLM agents.\n\n"
             "Subcomandos agrupados por concern (F-0017, ADR-0021):\n"
             "  Memória:    deploy, audit, propose-adr, migrate, archive,\n"
-            "              release\n"
-            "  Governança: record, log, check-staleness-staged,\n"
+            "              release, sample, schema\n"
+            "  Governança: record, log, version-check,\n"
+            "              check-staleness-staged, check-doc-sync-staged,\n"
             "              check-version-bump-staged"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -53,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
     archive.add_subparser(sub)
     changelog.add_subparser(sub)
     schema_reference.add_subparser(sub)
+    sample.add_subparser(sub)
 
     # Subcomandos de governança (telemetria, hooks, version-check)
     check_staleness.add_subparser(sub)
