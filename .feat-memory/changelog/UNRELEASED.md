@@ -16,4 +16,8 @@ retomada é derivado dessas referências. Vazio = nada em voo.
 
 ## Mudado
 
+- Audit reenquadrado: report e crosscheck declaram integridade referencial e movimento conjunto, não verdade semântica; severidade `info` nova, nunca promovida por `--strict` (ADR-0050)
+- Consumer version notice só em diferença de MAJOR, com linguagem "upgrade quando doer" (ADR-0050, ADR-0051)
+- Testes de preservação de conteúdo para freeze/scaffold do changelog (ADR-0051)
+
 ## Corrigido

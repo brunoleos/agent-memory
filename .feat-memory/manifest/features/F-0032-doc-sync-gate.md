@@ -6,8 +6,8 @@ introduced: 2026-06-06
 version: 1.1.0
 user_value: >
   O pre-commit hook bloqueia commits que tocam código sem mover nenhum artefato
-  de doc (.feat-memory/STATE.md, manifest/ ou decisions/), tornando a sincronização
-  documentação↔código uma garantia mecânica em vez de disciplina.
+  de doc (.feat-memory/STATE.md, manifest/ ou decisions/), tornando o movimento
+  conjunto documentação↔código uma garantia mecânica em vez de disciplina.
 contracts:
   api:
     - src/feat_memory/governance/check_doc_sync.py::staged_block_reason
@@ -32,5 +32,6 @@ substitui — o aviso soft `check-staleness-staged` (F-0013, ADR-0016): o soft n
 para o STATE, este garante que *algum* artefato de doc (STATE **ou** manifest **ou**
 decisions) se moveu junto com o código. Reusa `_is_code_path` (audit) e `_staged_paths`
 (check_staleness) para coerência de heurística. Segue o padrão de guard hard dentro de
-hook fail-open já estabelecido por `check-version-bump-staged` (ADR-0020). É a peça que
-converte a promessa de "doc sempre sincronizada" (ADR-0036) de disciplina em garantia.
+hook fail-open já estabelecido por `check-version-bump-staged` (ADR-0020). O que ele
+garante é **movimento conjunto** doc↔código no boundary de commit — integridade
+referencial, não verdade semântica do conteúdo movido (ADR-0050).

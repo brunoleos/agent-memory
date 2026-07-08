@@ -33,19 +33,34 @@ def _seed_meta(root, *, version: str = "0.7.0",
 # --- consumer_version_notice ---------------------------------------------
 
 
-def test_notice_when_versions_differ(tmp_project):
-    """A1: versões diferentes → notice com ambas + sugestão."""
+def test_notice_when_major_differs(tmp_project):
+    """A1: MAJOR diferente → notice com ambas + sugestão 'quando doer'."""
     _seed_meta(tmp_project, version="0.5.0")
     notice = version_check.consumer_version_notice(tmp_project)
     assert notice is not None
     assert __version__ in notice
     assert "0.5.0" in notice
     assert "feat-memory deploy" in notice
+    assert "quando doer" in notice
 
 
 def test_no_notice_when_versions_match(tmp_project):
     """A2: versões iguais → None."""
     _seed_meta(tmp_project, version=__version__)
+    assert version_check.consumer_version_notice(tmp_project) is None
+
+
+def test_no_notice_when_same_major_minor_differs(tmp_project):
+    """ADR-0050/0051: mesmo MAJOR, minor/patch diferentes → silencioso
+    ("upgrade quando doer" — a tool não induz cadência de upgrade)."""
+    major = str(__version__).split(".", 1)[0]
+    _seed_meta(tmp_project, version=f"{major}.998.7")
+    assert version_check.consumer_version_notice(tmp_project) is None
+
+
+def test_no_notice_when_deployed_version_unparseable(tmp_project):
+    """Versão deployed não-semver → fail-soft, sem notice espúrio."""
+    _seed_meta(tmp_project, version="banana")
     assert version_check.consumer_version_notice(tmp_project) is None
 
 
@@ -105,7 +120,7 @@ def test_run_prints_up_to_date_when_match(tmp_project, capsys, monkeypatch):
 
     assert rc == 0
     captured = capsys.readouterr()
-    assert "atualizado" in captured.out
+    assert "compatível" in captured.out
     assert __version__ in captured.out
 
 

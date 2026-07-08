@@ -1,13 +1,15 @@
-"""version_check.py — Notice soft quando consumer está desatualizado.
+"""version_check.py — Notice soft quando consumer está desatualizado em MAJOR.
 
 Lê `.feat-memory/.meta.yaml::version` e compara a `feat_memory.__version__`.
-Se diferentes, retorna texto sugerindo `feat-memory deploy .`.
+Só notifica quando o MAJOR difere ("upgrade quando doer", ADR-0050/0051 —
+amortece o nudge original do ADR-0022: a tool não deve induzir cadência de
+upgrade; diferenças de minor/patch são silenciosas).
 
 Subcomando: `feat-memory version-check` (standalone, para CI/scripts).
 Integração: `governance.audit::run` invoca após `print_report` e imprime
 na stderr (não muda exit code — soft, ADR-0008).
 
-ADR-0022 documenta política. Disable via `.meta.yaml::version_check_enabled: false`.
+Disable via `.meta.yaml::version_check_enabled: false`.
 
 Parte de `governance/`. Importa apenas de `shared/` e `feat_memory.__version__`.
 """
@@ -24,22 +26,30 @@ from feat_memory.shared.parsing import read_meta
 
 
 NOTICE_TEMPLATE = (
-    "ℹ feat-memory CLI {cli} vs deployed {deployed}\n"
-    "  re-rode `feat-memory deploy .` para sincronizar skills/templates\n"
-    "  (mudanças nesta versão podem afetar como o agente carrega contexto)."
+    "ℹ feat-memory CLI {cli} vs deployed {deployed} — MAJOR diferente\n"
+    "  upgrade quando doer: re-rode `feat-memory deploy .` quando um release\n"
+    "  note resolver uma dor sua, não por existir versão nova (ADR-0050/0051)."
 )
 
-UP_TO_DATE_TEMPLATE = "✓ feat-memory atualizado (v{cli})"
+UP_TO_DATE_TEMPLATE = "✓ feat-memory compatível (CLI v{cli})"
+
+
+def _major(version: str) -> str | None:
+    """Componente MAJOR de um semver ('2.5.0' → '2'); None se não-parseável."""
+    head = str(version).strip().lstrip("v").split(".", 1)[0]
+    return head if head.isdigit() else None
 
 
 def consumer_version_notice(root: Path) -> str | None:
-    """Retorna texto do notice se versões diferem, ou None.
+    """Retorna texto do notice se o MAJOR das versões difere, ou None.
 
     Casos onde retorna None (fail-soft):
     - `.meta.yaml` ausente (consumer pré-v0.6, ou root inválido)
     - `meta.get("version")` ausente ou vazio
     - `meta.get("version_check_enabled") is False`
-    - Versões iguais
+    - MAJOR igual (diferenças de minor/patch são silenciosas — "upgrade
+      quando doer", ADR-0050/0051)
+    - Versão deployed não-parseável (fail-soft: sem notice espúrio)
     """
     meta = read_meta(root)
     if not meta:
@@ -49,7 +59,10 @@ def consumer_version_notice(root: Path) -> str | None:
     deployed = meta.get("version")
     if not deployed:
         return None
-    if str(deployed) == str(__version__):
+    deployed_major = _major(str(deployed))
+    if deployed_major is None:
+        return None
+    if deployed_major == _major(str(__version__)):
         return None
     return NOTICE_TEMPLATE.format(cli=__version__, deployed=deployed)
 

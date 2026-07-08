@@ -72,8 +72,10 @@ DEFAULT_STATE_BUDGET = 4096
 @dataclass
 class Issue:
     artifact: str
-    severity: str  # "error" | "warning"
+    severity: str  # "error" | "warning" | "info"
     message: str
+    # "info" nunca é promovida por `audit --strict` (ADR-0050): é o canal de
+    # nudges heurísticos (ex.: léxico de mecanismo) que jamais bloqueiam commit.
 
 
 def validate_agent(path: Path) -> tuple[dict, list[Issue]]:

@@ -95,6 +95,12 @@ def validate_state_crosscheck(state_fm: dict,
     `validate_feature`); aqui o foco é "memória mentirosa" — o changelog/
     UNRELEASED.md citando IDs que não têm arquivo correspondente. ADR-0014.
 
+    O que este check (e o audit como um todo) garante é integridade
+    REFERENCIAL e movimento conjunto doc↔código — não verdade semântica dos
+    conteúdos. Um critério de aceite pode estar referencialmente íntegro e
+    factualmente apodrecido; essa camada é coberta pela amostragem
+    adversarial definida no ADR-0050, não por este gate.
+
     `features` deve ser a lista combinada de features ativas e
     arquivadas (run_audit faz a união antes de chamar). Cobertura
     histórica completa por F-0012.
@@ -555,6 +561,7 @@ def print_report(result: dict) -> None:
     m = result["metrics"]
     print("=" * 60)
     print("Relatório de auditoria")
+    print("(integridade referencial e movimento conjunto — não verdade semântica)")
     print("=" * 60)
     print(f"Project root:              {_paths.ROOT}")
     print(f"Conformidade de schema:    {m['schema_compliance']:.2f}")
@@ -592,9 +599,16 @@ def print_report(result: dict) -> None:
 
     issues = result["issues"]
     if issues:
-        print(f"Issues encontrados: {len(issues)}")
+        by_sev = {"error": 0, "warning": 0, "info": 0}
+        for i in issues:
+            by_sev[i["severity"]] = by_sev.get(i["severity"], 0) + 1
+        print(f"Issues encontrados: {len(issues)} "
+              f"({by_sev['error']} error, {by_sev['warning']} warning, "
+              f"{by_sev['info']} info)")
         for i in issues:
             print(f"  [{i['severity']}] {i['artifact']}: {i['message']}")
+        if by_sev["info"]:
+            print("  (info = nudge heurístico; nunca promovido por --strict)")
     else:
         print("Nenhum issue encontrado.")
 
