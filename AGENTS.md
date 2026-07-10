@@ -77,7 +77,7 @@ Não use `pip install -e .` — colide com o shim do pipx em `~/.local/bin/feat-
 <!-- >>> feat-memory >>> -->
 ## feat-memory
 
-Sessões começam por `.feat-memory/changelog/UNRELEASED.md` (trabalho em voo) e `.feat-memory/manifest/INDEX.md` (mapa de capacidades). Detalhes de uma feature ficam em `.feat-memory/manifest/features/F-NNNN-*.md`. Decisões arquiteturais em `.feat-memory/decisions/`. O histórico de releases vive em `.feat-memory/changelog/<tag>.md`. A metodologia completa está documentada no repositório do feat-memory: <https://github.com/brunoleos/feat-memory/blob/v3.0.0/METHODOLOGY.md>.
+Sessões começam por `.feat-memory/changelog/UNRELEASED.md` (trabalho em voo) e `.feat-memory/manifest/INDEX.md` (mapa de capacidades). Detalhes de uma feature ficam em `.feat-memory/manifest/features/F-NNNN-*.md`. Decisões arquiteturais em `.feat-memory/decisions/`. O histórico de releases vive em `.feat-memory/changelog/<tag>.md`. A metodologia completa está documentada no repositório do feat-memory: <https://github.com/brunoleos/feat-memory/blob/v3.0.4/METHODOLOGY.md>.
 
 Doutrina do observável: critérios de aceite enunciam observáveis externos, nunca mecanismo (mecanismo é território de ADR); quando o "como" é identidade do produto, ele vive aqui na constituição como constraint, e desce aos critérios só como observáveis de trajetória. Features são registros ortogonais — frontmatter com aceites e ponteiros; prosa que reafirma outra fonte drifta.
 
@@ -85,12 +85,12 @@ Este bloco é refrescado a cada `feat-memory deploy`. Não edite diretamente —
 
 ### Skills disponíveis
 
-Quatro skills em `skills/` orientam os fluxos críticos. Leia o `SKILL.md` de cada uma antes de executá-la — o frontmatter traz os triggers de ativação e as instruções autoritativas (fonte única; não duplicadas aqui). Roster:
+As skills em `skills/` orientam os fluxos críticos. Leia o `SKILL.md` de cada uma antes de executá-la — o frontmatter traz os triggers de ativação e as instruções autoritativas (fonte única; não duplicadas aqui). Roster (gerado dos `summary` das skills a cada deploy):
 
 - **`memory-deploy`** — instalar/adotar a metodologia num projeto: deploy mecânico e, em legacy, gênese retroativa multi-fonte (testes, telas, código, deps; git secundário).
-- **`memory-bootstrap`** — retomar uma sessão: carregar o contexto e dar o briefing tático ("onde paramos", "qual o status").
-- **`memory-debrief`** — fechar/commitar uma sessão: atualizar Manifest e registrar o trabalho no `changelog/UNRELEASED.md` e propor ADR a partir do diff. A mais usada no dia-a-dia.
-- **`memory-pull-brief`** — após `git pull`, brifar o que veio do remote e reconciliar o `UNRELEASED.md`.
+- **`memory-bootstrap`** — retomar uma sessão: carregar o contexto dentro do orçamento e dar o briefing tático ("onde paramos", "qual o status").
+- **`memory-debrief`** — fechar/commitar uma sessão: mover Manifest e changelog/UNRELEASED.md junto com o código, propor ADR a partir do diff e fechar com o teste do agente frio. A mais usada no dia-a-dia.
+- **`memory-pull-brief`** — após `git pull`, brifar o que veio do remote e reconciliar o UNRELEASED.md.
 
 ### Como retomar trabalho
 

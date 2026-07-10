@@ -1,5 +1,6 @@
 ---
 name: memory-pull-brief
+summary: "após `git pull`, brifar o que veio do remote e reconciliar o UNRELEASED.md."
 description: Use após git pull em projeto cliente quando o usuário pergunta o que mudou no remote (frases como "o que veio do pull?", "brifa as mudanças do main", "atualizei meu branch, o que mudou?", "reconcilia o em-voo com o que veio"). Examina o diff do pull, identifica mudanças em features e decisions e no bloco metodológico de AGENTS.md, cruza com .feat-memory/changelog/UNRELEASED.md local, e propõe ajustes para refletir a nova realidade. Read-only sobre .feat-memory/manifest/ e .feat-memory/decisions/ — só escreve em .feat-memory/changelog/UNRELEASED.md após aprovação do usuário.
 ---
 

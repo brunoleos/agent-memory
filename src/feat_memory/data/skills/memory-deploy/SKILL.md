@@ -1,6 +1,8 @@
 ---
 name: memory-deploy
-description: Use quando o usuário pede para instalar a metodologia em um projeto (frases como "instale a metodologia", "configure o feat-memory", "rode o setup", "este projeto não tem AGENTS.md", "ajude a adotar esta estrutura"). Conduz a adoção: detecta greenfield versus legacy, executa `feat-memory deploy` (que cuida sozinho do bloco com sentinelas no AGENTS.md), e em projetos legacy faz gênese retroativa por engenharia reversa multi-fonte (code-first): triangula testes, telas, documentação, código e dependências para extrair capacidades e decisões, com o git log como fonte secundária para datar/justificar. Propõe o frontmatter da AGENTS.md (project, stack, constraints) a partir de evidência observável e apresenta ao mantenedor para aprovação — nunca grava esses valores sem aval humano.
+summary: "instalar/adotar a metodologia num projeto: deploy mecânico e, em legacy, gênese retroativa multi-fonte (testes, telas, código, deps; git secundário)."
+description: >-
+  Use quando o usuário pede para instalar a metodologia em um projeto (frases como "instale a metodologia", "configure o feat-memory", "rode o setup", "este projeto não tem AGENTS.md", "ajude a adotar esta estrutura"). Conduz a adoção: detecta greenfield versus legacy, executa `feat-memory deploy` (que cuida sozinho do bloco com sentinelas no AGENTS.md), e em projetos legacy faz gênese retroativa por engenharia reversa multi-fonte (code-first): triangula testes, telas, documentação, código e dependências para extrair capacidades e decisões, com o git log como fonte secundária para datar/justificar. Propõe o frontmatter da AGENTS.md (project, stack, constraints) a partir de evidência observável e apresenta ao mantenedor para aprovação — nunca grava esses valores sem aval humano.
 ---
 
 # Memory deploy

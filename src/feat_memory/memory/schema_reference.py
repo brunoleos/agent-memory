@@ -111,6 +111,12 @@ def render_schema_reference() -> str:
     w("- `resumption_max_bytes` — **advisory**: orçamento de contexto de retomada "
       "que o agente respeita ao carregar UNRELEASED/features/ADRs; não há checagem "
       "mecânica.")
+    w("- Orçamento de prosa do corpo de features, por perfil de instalação "
+      "(ADR-0050): "
+      + "; ".join(f"`{profile}` = {limit} linhas não-vazias"
+                  for profile, limit in sorted(S.PROSE_BUDGET_BY_PROFILE.items()))
+      + " — acima do limite o audit emite warning (a feature é registro, "
+      "não documento).")
     w("")
 
     return "\n".join(out) + "\n"

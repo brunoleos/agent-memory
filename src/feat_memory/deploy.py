@@ -112,13 +112,49 @@ def _copy_resource(src: Traversable, dst: Path) -> None:
         shutil.copy2(src_path, dst)
 
 
+# Ordem editorial do roster (ciclo de vida: adotar → retomar → fechar →
+# sincronizar); skills fora da lista entram depois, em ordem alfabética.
+_ROSTER_ORDER = ["memory-deploy", "memory-bootstrap", "memory-debrief",
+                 "memory-pull-brief"]
+
+
+def _skills_roster() -> str:
+    """Roster gerado dos frontmatters das skills (campo `summary`).
+
+    Fonte única mecânica (ADR-0052): o texto de cada linha vive no próprio
+    SKILL.md; o template carrega só o token `{SKILLS_ROSTER}`. Skill sem
+    `summary` entra só com o nome (fail-soft) — nunca inventamos resumo.
+    """
+    from feat_memory.shared.parsing import parse_frontmatter
+    entries: dict[str, str] = {}
+    skills_root = _data_path("skills")
+    for entry in skills_root.iterdir():
+        skill_md = entry / "SKILL.md"
+        if not skill_md.is_file():
+            continue
+        try:
+            fm, _ = parse_frontmatter(skill_md)
+        except (ValueError, OSError):
+            continue
+        name = str(fm.get("name") or entry.name)
+        summary = str(fm.get("summary") or "").strip()
+        entries[name] = (f"- **`{name}`** — {summary}" if summary
+                         else f"- **`{name}`**")
+    ordered = [n for n in _ROSTER_ORDER if n in entries]
+    ordered += sorted(n for n in entries if n not in _ROSTER_ORDER)
+    return "\n".join(entries[n] for n in ordered)
+
+
 def _substitute_tokens(content: str) -> str:
-    """Substitui placeholders de template (`{VERSION}`, `{DEPLOY_DATE}`).
+    """Substitui placeholders de template (`{VERSION}`, `{DEPLOY_DATE}`,
+    `{SKILLS_ROSTER}`).
 
     `{VERSION}` → versão atual do pacote (URLs ancoradas na tag da doutrina).
     `{DEPLOY_DATE}` → instante UTC do deploy em ISO-8601, disponível para
-    artefatos gerados que precisem de um timestamp real. Templates sem
-    placeholders passam intactos.
+    artefatos gerados que precisem de um timestamp real.
+    `{SKILLS_ROSTER}` → bullets gerados dos `summary` das skills empacotadas
+    (só computado quando o token aparece). Templates sem placeholders passam
+    intactos.
     """
     from datetime import datetime, timezone
     from feat_memory import __version__
@@ -126,6 +162,8 @@ def _substitute_tokens(content: str) -> str:
     content = content.replace(
         "{DEPLOY_DATE}", datetime.now(timezone.utc).isoformat()
     )
+    if "{SKILLS_ROSTER}" in content:
+        content = content.replace("{SKILLS_ROSTER}", _skills_roster())
     return content
 
 

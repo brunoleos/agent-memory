@@ -1,5 +1,6 @@
 ---
 name: memory-debrief
+summary: "fechar/commitar uma sessão: mover Manifest e changelog/UNRELEASED.md junto com o código, propor ADR a partir do diff e fechar com o teste do agente frio. A mais usada no dia-a-dia."
 description: Use quando o usuário sinaliza intenção de commitar, fechar sessão, ou pedir atualização da memória do projeto (frases como "vou commitar", "atualize a memória", "feche a sessão", "debrief", "antes de subir"). Examina o diff, atualiza entradas do Manifest, registra o trabalho no changelog/UNRELEASED.md, e gera proposta de ADR se a sessão produziu decisão arquitetural.
 ---
 

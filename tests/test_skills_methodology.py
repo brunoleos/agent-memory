@@ -65,3 +65,14 @@ def test_deploy_genesis_carries_observable_doctrine():
     text = _skill("memory-deploy")
     assert "observáveis externos" in text
     assert "observáveis de trajetória" in text
+
+
+def test_every_skill_declares_a_summary():
+    """O roster do bloco AGENTS é gerado do campo `summary` de cada skill
+    (fonte única mecânica, ADR-0052) — skill sem summary quebra o roster."""
+    for name in ("memory-deploy", "memory-bootstrap",
+                 "memory-debrief", "memory-pull-brief"):
+        text = _skill(name)
+        assert text.startswith("---\n")
+        frontmatter = text.split("---", 2)[1]
+        assert "summary:" in frontmatter, f"{name} sem summary no frontmatter"

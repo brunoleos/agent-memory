@@ -20,5 +20,6 @@ retomada é derivado dessas referências. Vazio = nada em voo.
 - METHODOLOGY §Manifest: "descritivo, não aspiracional" corrigido para o modelo bidirecional — prospecção legítima via feature `proposed` com split (ADR-0052)
 - Dedup da METHODOLOGY: §Skills vira contratos apontando para os SKILL.md (corrige drift da gênese re-narrada), nova seção Deploy normativa (casa única), EARS aponta para SCHEMA-REFERENCE gerado (ADR-0052)
 - Dedup dos touchpoints: README/USER_GUIDE viram orquestradores (fatos normativos apontam para METHODOLOGY/SCHEMA-REFERENCE/skills); AGENTS §Identidade encolhe e para de duplicar o roster de subcomandos (ADR-0052)
+- Roster de skills do bloco AGENTS gerado mecanicamente dos `summary` dos SKILL.md (token {SKILLS_ROSTER}); orçamentos de prosa entram no SCHEMA-REFERENCE gerado (ADR-0052)
 
 ## Corrigido

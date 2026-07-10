@@ -53,4 +53,5 @@ Cada item de `acceptance` tem um `pattern` e os campos exigidos por ele (além d
 
 - `state_max_bytes` — **legado** (default 4096B): enforced só quando ainda existe um `STATE.md` legado (removido na 2.0.0).
 - `resumption_max_bytes` — **advisory**: orçamento de contexto de retomada que o agente respeita ao carregar UNRELEASED/features/ADRs; não há checagem mecânica.
+- Orçamento de prosa do corpo de features, por perfil de instalação (ADR-0050): `core` = 10 linhas não-vazias; `full` = 40 linhas não-vazias — acima do limite o audit emite warning (a feature é registro, não documento).
 

@@ -31,4 +31,4 @@
 | F-0048 | features-json-export | shipped | 3.1.0 | ADR-0052 | — |
 | F-0049 | criterion-binding | shipped | 3.1.0 | ADR-0052 | F-0045 |
 
-_Gerado por `feat-memory audit` em 2026-07-10T03:53:24+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-07-10T21:34:26+00:00. Não edite manualmente._

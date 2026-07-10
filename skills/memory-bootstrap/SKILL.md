@@ -1,5 +1,6 @@
 ---
 name: memory-bootstrap
+summary: "retomar uma sessão: carregar o contexto dentro do orçamento e dar o briefing tático (\"onde paramos\", \"qual o status\")."
 description: Use no início de uma sessão ou quando o usuário pergunta sobre o estado atual do projeto (frases como "onde paramos", "qual o status", "carregue o contexto", "o que está em andamento"). Carrega a memória persistente do projeto (AGENTS.md, changelog/UNRELEASED.md, índices) e apresenta um briefing tático antes de prosseguir com a tarefa.
 ---
 

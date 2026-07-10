@@ -43,12 +43,9 @@ Este bloco é refrescado a cada `feat-memory deploy`. Não edite diretamente —
 
 ### Skills disponíveis
 
-Quatro skills em `skills/` orientam os fluxos críticos. Leia o `SKILL.md` de cada uma antes de executá-la — o frontmatter traz os triggers de ativação e as instruções autoritativas (fonte única; não duplicadas aqui). Roster:
+As skills em `skills/` orientam os fluxos críticos. Leia o `SKILL.md` de cada uma antes de executá-la — o frontmatter traz os triggers de ativação e as instruções autoritativas (fonte única; não duplicadas aqui). Roster (gerado dos `summary` das skills a cada deploy):
 
-- **`memory-deploy`** — instalar/adotar a metodologia num projeto: deploy mecânico e, em legacy, gênese retroativa multi-fonte (testes, telas, código, deps; git secundário).
-- **`memory-bootstrap`** — retomar uma sessão: carregar o contexto e dar o briefing tático ("onde paramos", "qual o status").
-- **`memory-debrief`** — fechar/commitar uma sessão: atualizar Manifest e registrar o trabalho no `changelog/UNRELEASED.md` e propor ADR a partir do diff. A mais usada no dia-a-dia.
-- **`memory-pull-brief`** — após `git pull`, brifar o que veio do remote e reconciliar o `UNRELEASED.md`.
+{SKILLS_ROSTER}
 
 ### Como retomar trabalho
 
