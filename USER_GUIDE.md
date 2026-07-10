@@ -33,7 +33,7 @@ feat-memory deploy /caminho/do/projeto
 
 Isso monta `AGENTS.md`, `CLAUDE.md`, `.feat-memory/changelog/UNRELEASED.md`, `.feat-memory/manifest/`, `.feat-memory/decisions/`, `.feat-memory/ideas.md`, `skills/`, `.gitattributes`, instala o pre-commit hook se for repositório Git, e adiciona `.feat-memory-deploy/` (estado transiente do deploy) ao `.gitignore`.
 
-O deploy tem dois perfis (ADR-0050). O **core**, default em instalação nova, monta a espinha de valor comprovado: constituição, decisions, UNRELEASED e features finas (orçamento de prosa de 10 linhas por corpo). O **full** (`--profile full`) adiciona a operação completa de changelog — releases congelados por tag — e um orçamento de prosa maior (40 linhas). A escolha fica gravada em `.feat-memory/.meta.yaml`; re-deploy sem a flag preserva o perfil, e instalações antigas (pré-v3) resolvem para `full` — você nunca ganha warnings novos só porque a CLI avançou.
+O deploy tem dois perfis (ADR-0050): **core**, default em instalação nova, monta a espinha — constituição, decisions, UNRELEASED e features finas; **full** (`--profile full`) adiciona a operação completa de changelog e um orçamento de prosa maior (valores e semântica na [METHODOLOGY.md](METHODOLOGY.md), §Perfis de instalação). A escolha fica gravada em `.feat-memory/.meta.yaml`; re-deploy sem a flag preserva o perfil, e instalações antigas (pré-v3) resolvem para `full` — você nunca ganha warnings novos só porque a CLI avançou.
 
 **Terceiro**, abra uma sessão com seu agente preferido (Claude Code, Cursor, ou outro que reconheça `AGENTS.md`) e diga "instale a metodologia neste projeto". A skill `memory-deploy` assume o controle, detecta se o projeto é greenfield ou legacy, e conduz a personalização apropriada. Faça o primeiro commit dos artefatos gerados com mensagem clara como "adopt feat-memory methodology".
 
@@ -56,23 +56,21 @@ Quando o pacote estiver publicado na PyPI (planejado), o caminho de instalação
 
 ## Os quatro artefatos no dia-a-dia
 
-A constituição em `AGENTS.md` é o arquivo que você personaliza uma vez no início e raramente toca depois. Ela contém o nome do projeto, a stack técnica, restrições não-negociáveis com severidade explícita (`hard` bloqueia o build, `soft` apenas avisa), e ponteiros para os outros artefatos. Mudanças nesta constituição que alteram restrições `hard` exigem ADR registrando a justificativa. O Claude Code carrega `AGENTS.md` automaticamente via `CLAUDE.md`, e outros agentes que reconhecem a convenção também o carregam.
+O esquema completo de cada artefato — schema, regras de mutação, porquês — vive na [METHODOLOGY.md](METHODOLOGY.md) (§§1–5). Para operar, basta saber quem responde o quê:
 
-O manifesto em `.feat-memory/manifest/features/` é onde você registra cada capacidade do sistema. Cada arquivo tem o nome `F-NNNN-slug.md` (por exemplo, `F-0007-vector-similarity-search.md`) e descreve uma capacidade nomeável que entrega valor identificável. O frontmatter YAML contém metadados estruturados (status, versão, dependências, decisões relacionadas) e os critérios de aceitação seguem a notação EARS com cinco padrões canônicos. O índice em `.feat-memory/manifest/INDEX.md` é gerado automaticamente pelo `feat-memory audit` e nunca deve ser editado à mão.
-
-O changelog vivo em `.feat-memory/changelog/UNRELEASED.md` é o único artefato verdadeiramente volátil. Cada entrada-bullet registra trabalho concluído-mas-não-lançado, citando as `F-NNNN`/`ADR-NNNN` que toca — e é dessas referências que a próxima sessão deriva o que carregar (o orçamento de retomada, ADR-0043). A skill `memory-debrief` adiciona a entrada ao final de cada unidade de trabalho; a skill `memory-bootstrap` lê o UNRELEASED no início da próxima sessão e expande só o que ele referencia. Ao cortar uma release (`feat-memory release`), o conteúdo congela em `changelog/<X.Y.Z>.md` imutável e o UNRELEASED reinicia vazio.
-
-As decisões em `.feat-memory/decisions/` são imutáveis depois de aceitas. Cada arquivo tem nome `NNNN-slug.md` (por exemplo, `0007-cosine-similarity-default.md`) e segue quatro seções padronizadas: Contexto (o problema), Decisão (a escolha feita), Consequências (positivas e negativas), Alternativas rejeitadas (com a razão da rejeição). Decisões que precisam mudar não são editadas; são substituídas por novas que apontam para as antigas via `supersedes`, preservando o raciocínio histórico mesmo quando a conclusão muda.
+- **`AGENTS.md`** — as regras. Personalizado uma vez, raramente tocado; mudanças em constraints `hard` exigem ADR.
+- **`.feat-memory/manifest/features/`** — o que o sistema faz: uma microspec por capacidade (`F-NNNN-slug.md`), com critérios EARS; o INDEX é gerado pelo audit, nunca editado à mão.
+- **`.feat-memory/changelog/UNRELEASED.md`** — o trabalho em voo. Cada bullet cita as F/ADR que toca, e é disso que a próxima sessão deriva o que carregar; `feat-memory release` congela o conteúdo em `changelog/<X.Y.Z>.md` imutável.
+- **`.feat-memory/decisions/`** — os porquês, imutáveis; mudança de decisão é supersede, nunca edição.
 
 ## Fluxo de trabalho típico
 
-Um dia normal de trabalho com a metodologia segue um padrão simples. No início da sessão, você diz ao agente "onde paramos?" ou simplesmente entra no projeto e a skill `memory-bootstrap` carrega `.feat-memory/changelog/UNRELEASED.md`, expande apenas as features e decisões referenciadas nas entradas em voo, e apresenta um briefing tático curto. Você confirma se quer prosseguir com o que está em voo ou tem outra prioridade; UNRELEASED vazio significa nada em voo, e a skill oferece candidatos do funil `ideas.md`.
+O dia-a-dia são quatro momentos, cada um coberto por uma skill — o procedimento autoritativo de cada uma vive no respectivo `skills/*/SKILL.md`:
 
-Durante o trabalho, o agente segue as restrições da constituição automaticamente. Se você está modificando uma feature existente, ele atualiza o arquivo correspondente em `.feat-memory/manifest/features/` no mesmo commit do código. Se você toma uma decisão arquitetural não-trivial, ele propõe um ADR via `feat-memory propose-adr` ou diretamente como rascunho em `.feat-memory/decisions/proposals/`. Se a mudança quebra restrições `hard` declaradas em `AGENTS.md`, o pre-commit hook bloqueia o commit antes que ele aconteça.
-
-Antes de cada commit relevante, você diz ao agente "vou commitar" ou "atualize a memória", e a skill `memory-debrief` executa a rotina completa: examina o diff, atualiza entradas do Manifest para features tocadas, registra o trabalho como entrada-bullet no `.feat-memory/changelog/UNRELEASED.md`, gera proposta de ADR se a sessão produziu decisão arquitetural, roda a auditoria, e fecha com o teste do agente frio — "um agente frio responderia 'por que não X?' só com a memória?". Se a sessão está em uma branch que será mesclada de volta, a skill também checa colisões de IDs contra a branch destino, evitando o problema antes que ele apareça no merge.
-
-Depois de um `git pull` que trouxe commits de colegas, você diz ao agente "o que veio do pull?" ou "brifa as mudanças do main", e a skill `memory-pull-brief` examina o diff trazido, identifica mudanças semânticas em features e ADRs (transições de status, novos IDs, supersedes), e propõe ajustes no `.feat-memory/changelog/UNRELEASED.md` local para refletir a nova realidade. Por design ela não toca `.feat-memory/manifest/` nem `.feat-memory/decisions/`, que já vieram corretos do pull.
+- **Início de sessão** — "onde paramos?" → `memory-bootstrap` carrega o UNRELEASED, expande só o que ele referencia e apresenta um briefing tático. Vazio = nada em voo; candidatos vêm do funil `ideas.md`.
+- **Durante o trabalho** — o agente segue a constituição (o hook bloqueia violação de constraint `hard`); capacidade nova nasce cedo como feature `proposed`, decisão como ADR `proposed`.
+- **Antes de cada commit relevante** — "vou commitar" → `memory-debrief` move Manifest e UNRELEASED junto com o código, propõe ADR se houve decisão, roda o audit e fecha com o teste do agente frio. Em branch destinada a merge, checa colisões de ID.
+- **Depois de um `git pull`** — "o que veio do pull?" → `memory-pull-brief` reconcilia o UNRELEASED local (read-only sobre `manifest/` e `decisions/`, que já vieram corretos).
 
 ## Atualizações da metodologia
 
@@ -86,7 +84,7 @@ git fetch --tags
 git checkout v0.3.0
 ```
 
-Para reaplicar templates e skills no projeto consumidor após um upgrade da CLI, rode `feat-memory deploy <projeto>` novamente. Em `AGENTS.md`, o deploy refresca apenas o bloco delimitado por sentinelas markdown (`<!-- >>> feat-memory >>> -->` / `<!-- <<< feat-memory <<< -->`) — todo conteúdo fora do bloco (identidade, restrições, convenções autorias do mantenedor) é preservado byte-a-byte. Skills, `.gitattributes` e o pre-commit hook são atualizados; `.gitignore` ganha a entrada `.feat-memory-deploy/` se ainda não existe; `.feat-memory/changelog/UNRELEASED.md` e `CLAUDE.md` são pulados se existem, e o perfil gravado no `.meta.yaml` é preservado. Tudo idempotente — rodar duas vezes é seguro.
+Para reaplicar templates e skills no projeto consumidor após um upgrade da CLI, rode `feat-memory deploy <projeto>` novamente — é idempotente, preserva tudo que é seu (conteúdo fora do bloco de sentinelas, UNRELEASED existente, perfil gravado). A especificação completa do que é refrescado, preservado ou pulado está na [METHODOLOGY.md](METHODOLOGY.md), seção **Deploy**.
 
 E quanto à cadência: **upgrade quando doer**. A CLI só avisa sobre desatualização quando o MAJOR difere (ADR-0050/0051); diferenças de minor/patch são silenciosas. Atualize quando um release note resolver uma dor sua — não por existir versão nova.
 
@@ -96,15 +94,9 @@ Migrando de v0.1.0 ou v0.2.0 (modelo "clone da tool para `.feat-memory/` no proj
 
 ## Comandos importantes
 
-A auditoria é a ferramenta mais usada e cobre validação de schemas, geração de índices automáticos, e cálculo dos indicadores de saúde do projeto. O que ela garante — e declara no próprio relatório — é integridade referencial e movimento conjunto doc↔código, não verdade semântica dos conteúdos. A invocação básica é `feat-memory audit`, que emite um relatório legível e atualiza os índices. Para CI, use `feat-memory audit --json --strict`, que emite saída estruturada e promove warnings (drift) a errors — issues `info` (nudges heurísticos, como o léxico de mecanismo) nunca são promovidos. Para o pre-commit hook, o modo `--strict --no-index` é o padrão, validando sem regenerar arquivos durante o commit.
+A auditoria valida schemas, gera os índices e calcula os indicadores de saúde — o que ela garante (e o que deliberadamente não garante) está na [METHODOLOGY.md](METHODOLOGY.md), §Auditoria. Invocações: `feat-memory audit` para o relatório; `--json --strict` para CI; `--strict --no-index` é o modo do pre-commit hook. Para colisões de ID antes de um merge: `feat-memory audit --check-collisions origin/main` — renumere o lado ainda não mesclado.
 
-A verdade semântica dos critérios de aceite é coberta pela amostragem adversarial: `feat-memory sample --event release` (ou `--event supersede`) sorteia features ponderadas por risco e emite prompts de refutação para o seu agente executar — "prove que este critério ainda é verdade no código; falhe ruidosamente se não conseguir". Rode após supersedes e a cada release; o comando sempre retorna exit 0.
-
-Para detectar colisões de IDs antes de um merge, use `feat-memory audit --check-collisions origin/main` (ou a branch destino que você usar). A checagem compara os IDs criados na branch atual com os existentes na branch destino, alertando se duas branches paralelas criaram o mesmo ID. Renumere antes de mesclar para evitar estado semanticamente quebrado.
-
-Para gerar propostas de ADR a partir do diff atual, use `feat-memory propose-adr --staged`. A ferramenta examina o diff, detecta sinais de mudança arquitetural não-trivial (volume, dependências alteradas, mudanças em múltiplos diretórios, padrões linguísticos em mensagens de commit), e gera um draft em `.feat-memory/decisions/proposals/`. Drafts não são ADRs verdadeiros; são pontos de partida para revisão humana antes de promover para `.feat-memory/decisions/`.
-
-Para projetos legacy adotando a metodologia, use `feat-memory migrate --limit 200`. A ferramenta examina os últimos commits do Git e propõe ADRs candidatos a partir de padrões linguísticos. Os candidatos são impressos para revisão humana, não escritos automaticamente. A skill `memory-deploy` invoca essa ferramenta automaticamente na fase 2 da gênese retroativa.
+A verdade semântica dos critérios é da amostragem adversarial: `feat-memory sample --event release` (ou `--event supersede`) emite prompts de refutação para o seu agente executar (METHODOLOGY, §Amostragem adversarial). Para propor ADR a partir do diff: `feat-memory propose-adr --staged` gera draft em `decisions/proposals/` para revisão humana. Para gênese em legacy: `feat-memory migrate --limit 200` imprime pistas (a skill `memory-deploy` já o invoca). Para adapters: `feat-memory features --json` exporta o Manifest estruturado.
 
 ## Resolução de problemas comuns
 
@@ -114,13 +106,13 @@ Quando o `.feat-memory/changelog/UNRELEASED.md` parece inconsistente com o códi
 
 Quando duas branches têm features ou ADRs com IDs colidentes, rode `--check-collisions` antes do merge. A solução é renumerar o artefato mais novo na branch que ainda não foi mesclada, atualizando o nome do arquivo, o campo `id` no frontmatter, e qualquer referência cruzada em outras features ou ADRs. ADRs já mesclados na branch destino nunca são renumerados.
 
-Quando o `feat-memory audit` reporta erros de notação EARS em critérios de aceitação, examine o `pattern` declarado e os campos obrigatórios para aquele padrão. Os cinco padrões canônicos são `ubiquitous` (sempre ativo, requer `requirement`), `event` (gatilho externo, requer `trigger` e `response`), `state` (em condição, requer `state` e `response`), `optional` (feature opcional, requer `feature` e `response`), e `unwanted` (situação indesejada, requer `trigger` e `response`). O sexto padrão `complex` existe como escape mas deve ser usado com parcimônia.
+Quando o `feat-memory audit` reporta erros de notação EARS em critérios de aceitação, rode `feat-memory schema` (ou veja [docs/SCHEMA-REFERENCE.md](docs/SCHEMA-REFERENCE.md)) — a referência gerada, sincronizada com o validador por teste, lista os campos obrigatórios de cada pattern.
 
 Quando o pre-commit hook não dispara a auditoria e libera commits silenciosamente, é porque o binário `feat-memory` não está no `PATH` do shell que faz o commit. O hook é deliberadamente fail-open nesse cenário: emite um aviso em `stderr` ("AVISO: 'feat-memory' não encontrado no PATH; pulando auditoria") e libera o commit, em vez de bloquear. A justificativa é que hooks que viram inimigo (bloqueando trabalho legítimo de quem ainda não instalou a CLI) acabam sendo desinstalados ou bypassados com `--no-verify` virando hábito, o que destrói a utilidade da checagem para todos. Se você está confiando na auditoria e quer detectar esse cenário, configure CI para rodar `feat-memory audit --strict` no PR — assim o hook local é nudge, e a CI é a rede de segurança real.
 
 ## Trabalhando em time
 
-Quando o time tem múltiplas pessoas tocando o projeto, a metodologia funciona sem coordenação adicional na maioria dos casos. Cada pessoa abre uma branch, trabalha, faz debrief, commita, e merge. A configuração `.gitattributes` resolve automaticamente os conflitos previsíveis em `.feat-memory/changelog/UNRELEASED.md` e nos índices, mantendo a versão da branch destino e regenerando o que precisa ser regenerado.
+Quando o time tem múltiplas pessoas tocando o projeto, a metodologia funciona sem coordenação adicional na maioria dos casos. Cada pessoa abre uma branch, trabalha, faz debrief, commita, e merge. Os conflitos previsíveis (UNRELEASED, índices) são resolvidos automaticamente pelo `.gitattributes`; a semântica completa de merge e rebase por artefato está na [METHODOLOGY.md](METHODOLOGY.md), §Workflow de merge e rebase.
 
 Os dois pontos onde coordenação importa são a escolha de IDs novos (que pode produzir colisão) e a modificação simultânea da mesma feature (que pode produzir conflito real). Para o primeiro, a skill `memory-debrief` checa colisões automaticamente e propõe renumeração. Para o segundo, a resolução é manual seguindo a regra de "preservar adições, substituir campos de overwrite": critérios de aceitação são aditivos, métricas são substitutivas.
 

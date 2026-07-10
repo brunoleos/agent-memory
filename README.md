@@ -46,22 +46,7 @@ Para projetos legacy, a skill conduz adicionalmente gênese retroativa multi-fon
 
 ## Comportamento com arquivos pré-existentes
 
-O `feat-memory deploy` é idempotente em todas as superfícies que ele instala. A `AGENTS.md` carrega um bloco delimitado por sentinelas markdown:
-
-```markdown
-<!-- >>> feat-memory >>> -->
-## feat-memory
-[instruções de uso da metodologia, refrescadas a cada deploy]
-<!-- <<< feat-memory <<< -->
-```
-
-Quando o `AGENTS.md` já existe, o deploy só toca o conteúdo entre essas sentinelas — todo o resto (frontmatter, seções específicas do projeto, comentários do usuário) é preservado. Quando ainda não existe, o template completo é escrito (frontmatter scaffold + bloco). O `CLAUDE.md` (redirect mínimo `@AGENTS.md`) é copiado se ausente e deixado quieto se existe.
-
-O `.feat-memory/changelog/UNRELEASED.md` segue semântica diferente: como o conteúdo dele é volátil por construção, não há valor real em mesclar. Se já existe, é simplesmente pulado — o deploy nunca sobrescreve conteúdo do usuário nele (regra do postmortem ADR-0051).
-
-As skills em `skills/` são sempre reescritas a cada deploy, porque elas são conteúdo de metodologia (não de usuário). Se você quiser uma skill customizada, copie-a para um nome diferente (`skills/memory-debrief` → `skills/my-debrief`) — a versão renomeada é preservada. O `.gitattributes` segue a mesma lógica via bloco com sentinelas: o que estiver fora do bloco é preservado, o bloco em si é refrescado.
-
-A flag `--force` reescreve `AGENTS.md` e `CLAUDE.md` inteiros a partir do template, descartando conteúdo do usuário fora do bloco. A flag `--no-merge` pula a refresh do bloco em `AGENTS.md`/`CLAUDE.md` existentes (útil em CI onde nenhuma modificação é desejada).
+O `feat-memory deploy` é idempotente: em `AGENTS.md` ele só refresca o bloco entre as sentinelas `<!-- >>> feat-memory >>> -->` / `<!-- <<< feat-memory <<< -->` e preserva todo o resto (frontmatter, seções do mantenedor); o `changelog/UNRELEASED.md` nunca é sobrescrito quando existe. A especificação completa — o que é refrescado, preservado ou pulado, e as flags `--force`/`--no-merge` — está na [METHODOLOGY.md](METHODOLOGY.md), seção **Deploy**.
 
 ## Versionamento e atualizações
 
@@ -132,7 +117,9 @@ feat-memory/                         # clone do projeto na sua máquina
 │       │   ├── schemas.py            # validação de schema (EARS, orçamento de prosa)
 │       │   ├── indexing.py           # geração de INDEX.md
 │       │   ├── archive.py            # subcomando archive
+│       │   ├── binding.py            # binding critério↔teste (F-NNNN-AN)
 │       │   ├── changelog.py          # subcomando release + UNRELEASED
+│       │   ├── export.py             # subcomando features (export JSON)
 │       │   ├── propose_adr.py        # subcomando propose-adr
 │       │   ├── sample.py             # subcomando sample (refutação adversarial)
 │       │   ├── schema_reference.py   # subcomando schema
@@ -189,46 +176,25 @@ seu-projeto/
 
 ## Operação diária
 
-As quatro skills cobrem quatro momentos qualitativamente diferentes do uso da metodologia. Cada uma tem triggers próprios e instruções autoritativas no respectivo `SKILL.md`. O agente que entende essas skills (Claude Code via `CLAUDE.md`, Cursor via `AGENTS.md`, e outros) descobre os triggers a partir do `description` no frontmatter de cada skill.
+Quatro skills cobrem os quatro momentos do uso — o procedimento autoritativo de cada uma vive no seu `SKILL.md`, e o agente descobre os triggers pelo `description` do frontmatter:
 
-A skill `memory-deploy` cobre a adoção inicial, executada uma única vez por projeto. Ela ativa quando o usuário pede para instalar a metodologia e conduz tanto greenfield quanto legacy, conforme detectado.
-
-A skill `memory-bootstrap` cobre o início de cada sessão de trabalho. Frases como "onde paramos" ou "qual o status" ativam a skill, que carrega o contexto eficientemente e apresenta um briefing tático antes de prosseguir.
-
-A skill `memory-debrief` é a mais usada no dia-a-dia. Frases como "vou commitar" ou "atualize a memória" ativam a skill, que examina o diff, atualiza o Manifest, registra o trabalho no `changelog/UNRELEASED.md`, gera proposta de ADR se necessário, e fecha com o teste do agente frio ("um agente frio responderia 'por que não X?' só com a memória?"). Invoque-a antes de cada commit relevante.
-
-A skill `memory-pull-brief` cobre o quarto momento crítico: depois de `git pull` que trouxe commits de colegas. Frases como "o que veio do pull" ou "brifa as mudanças do main" ativam a skill, que examina o diff trazido, identifica mudanças semânticas em `.feat-memory/manifest/`, `.feat-memory/decisions/` e no bloco metodológico de `AGENTS.md`, e propõe ajustes em `.feat-memory/changelog/UNRELEASED.md` para ressincronizar o foco local. É read-only sobre `.feat-memory/manifest/` e `.feat-memory/decisions/` — esses já vieram corretos do pull.
+- **`memory-deploy`** — adoção inicial, greenfield ou legacy (com gênese retroativa revisada).
+- **`memory-bootstrap`** — início de sessão ("onde paramos?").
+- **`memory-debrief`** — antes de cada commit relevante; a mais usada.
+- **`memory-pull-brief`** — depois de `git pull` que trouxe commits de colegas.
 
 ## Comandos úteis
 
-A auditoria valida todos os artefatos e gera os índices automaticamente. Ela é executada também pelo pre-commit hook em modo strict.
-
 ```bash
-feat-memory audit                # relatório + índices
-feat-memory audit --strict       # warnings viram errors
-feat-memory audit --json         # output para CI
+feat-memory audit                    # valida artefatos + gera índices (--strict no hook/CI)
+feat-memory features --json          # export estruturado do Manifest (adapters)
+feat-memory sample --event release   # prompts de refutação adversarial (exit 0 sempre)
+feat-memory propose-adr --staged     # draft de ADR a partir do diff
+feat-memory migrate --limit 200      # pistas para gênese retroativa (legacy)
+feat-memory schema                   # referência gerada de campos e patterns EARS
 ```
 
-O gerador de propostas examina o diff atual e detecta sinais de mudança arquitetural não-trivial, gerando draft em `.feat-memory/decisions/proposals/` para revisão. É invocado pela skill `memory-debrief` mas pode ser chamado diretamente.
-
-```bash
-feat-memory propose-adr             # examina HEAD~1..HEAD
-feat-memory propose-adr --staged    # mudanças staged
-feat-memory propose-adr --prompt    # prompt para LLM
-```
-
-O detector de candidatos para gênese retroativa é invocado pela skill `memory-deploy` na fase 2 de projetos legacy. Pode ser chamado diretamente para inspeção do histórico.
-
-```bash
-feat-memory migrate --limit 200
-```
-
-A amostragem adversarial cobre a verdade semântica dos critérios de aceite, que o audit (referencial) não cobre: sorteia features ponderadas por risco e emite prompts de refutação para um agente LLM executar. Gatilho recomendado: após um supersede e a cada release.
-
-```bash
-feat-memory sample --event release          # prompts de refutação, exit 0 sempre
-feat-memory sample --count 5 --seed 42      # amostra maior, reprodutível
-```
+O que cada comando garante — e o que deliberadamente não garante — está na [METHODOLOGY.md](METHODOLOGY.md).
 
 ## Documentação
 

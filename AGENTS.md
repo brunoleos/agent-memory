@@ -40,7 +40,7 @@ budgets:
 
 ## Identidade
 
-`feat-memory` é uma CLI Python que distribui uma metodologia de memória persistente para agentes LLM (Claude Code, Cursor, Aider e qualquer ferramenta que reconheça `AGENTS.md`). Quatro artefatos versionados (`AGENTS.md` na raiz; `manifest/`, `decisions/` e `changelog/` em `.feat-memory/`) dão ao agente contexto durável entre sessões; um conjunto de subcomandos (`deploy`, `audit`, `propose-adr`, `migrate`, `archive`, `release`, `record`/`log`, `version-check`, `check-*-staged`) automatiza instalação, validação, gênese retroativa e governança. Quatro skills (`memory-deploy`, `memory-bootstrap`, `memory-debrief`, `memory-pull-brief`) orientam os fluxos críticos. Usuários: desenvolvedores que querem que seu agente preserve foco e decisões arquiteturais sem reler o código a cada sessão.
+`feat-memory` é uma CLI Python que distribui uma metodologia de memória persistente para agentes LLM — quatro artefatos versionados, skills e governança executável. A apresentação completa (o quê, para quem, comandos) está no [README.md](README.md); a doutrina, na [METHODOLOGY.md](METHODOLOGY.md); o roster de subcomandos, em `feat-memory --help` (não o duplique aqui — drifta).
 
 Este repositório é simultaneamente a tool e a metodologia — vale o C3: o projeto segue o próprio protocolo.
 
