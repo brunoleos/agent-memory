@@ -18,5 +18,6 @@ retomada é derivado dessas referências. Vazio = nada em voo.
 ## Mudado
 
 - METHODOLOGY §Manifest: "descritivo, não aspiracional" corrigido para o modelo bidirecional — prospecção legítima via feature `proposed` com split (ADR-0052)
+- Dedup da METHODOLOGY: §Skills vira contratos apontando para os SKILL.md (corrige drift da gênese re-narrada), nova seção Deploy normativa (casa única), EARS aponta para SCHEMA-REFERENCE gerado (ADR-0052)
 
 ## Corrigido
