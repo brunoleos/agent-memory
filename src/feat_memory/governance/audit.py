@@ -61,6 +61,7 @@ __all__ = [
     "validate_state_freshness",
     "validate_release_status",
     "validate_supersede_reconciliation",
+    "validate_proposed_staleness",
     "check_constraints",
     "released_versions",
     "STALENESS_WARN_HOURS",
@@ -233,6 +234,66 @@ def validate_supersede_reconciliation() -> list[Issue]:
                 f"ADR que supersede, ou atualize a citação (ADR-0050)",
             ))
 
+    return issues
+
+
+# Idade (dias) a partir da qual uma feature `proposed` sem referência viva
+# vira nudge `info` (ADR-0052): prospecção sem relógio é backlog JIRA-ificado.
+PROPOSED_STALENESS_DAYS = 90
+
+
+def _last_commit_epoch(path: Path) -> int | None:
+    """Timestamp do último commit que tocou `path`; None sem git/commit."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(_paths.ROOT), "log", "-1", "--format=%ct",
+             "--", str(path)],
+            capture_output=True, text=True, check=False,
+        ).stdout.strip()
+        return int(out) if out.isdigit() else None
+    except OSError:
+        return None
+
+
+def validate_proposed_staleness(days: int = PROPOSED_STALENESS_DAYS) -> list[Issue]:
+    """Anti-apodrecimento de prospecção (ADR-0052, F-0047).
+
+    Feature `proposed` cujo último commit tem mais de `days` dias e que não é
+    referenciada nem no UNRELEASED (refs derivadas) nem no `ideas.md` gera
+    issue `info` — nudge de higiene, nunca gate (ADR-0024: bloquear mentira
+    factual, nudgar higiene). Feature nunca commitada tem idade desconhecida
+    e é pulada (fail-soft).
+    """
+    issues: list[Issue] = []
+    if not _paths.FEATURES_DIR.exists():
+        return issues
+
+    from feat_memory.memory import changelog as _changelog
+    referenced = set(_changelog.derive_active_refs(_paths.ROOT)["features"])
+    ideas = _paths.ROOT / ".feat-memory" / "ideas.md"
+    ideas_text = ideas.read_text(encoding="utf-8") if ideas.exists() else ""
+
+    now = datetime.now(timezone.utc).timestamp()
+    for fp in sorted(_paths.FEATURES_DIR.glob("F-*.md")):
+        try:
+            fm, _ = parse_frontmatter(fp)
+        except ValueError:
+            continue
+        if fm.get("status") != "proposed" or not fm.get("id"):
+            continue
+        fid = str(fm["id"])
+        if fid in referenced or re.search(rf"\b{re.escape(fid)}\b", ideas_text):
+            continue
+        ts = _last_commit_epoch(fp)
+        if ts is None:
+            continue
+        age_days = int((now - ts) / 86400)
+        if age_days > days:
+            issues.append(Issue(
+                fp.name, "info",
+                f"proposed há {age_days}d sem referência em UNRELEASED/ideas "
+                f"— promova, reescope ou descarte (ADR-0052)",
+            ))
     return issues
 
 
@@ -649,6 +710,10 @@ def run_audit(write_indices: bool = True,
     # nunca promovida — heurística, jamais gate (ADR-0050, F-0046).
     from feat_memory.governance import lexicon as _lexicon
     all_issues.extend(_lexicon.check_mechanism_lexicon())
+
+    # Anti-apodrecimento de prospecção: proposed velho sem referência viva
+    # vira nudge `info` (ADR-0052, F-0047).
+    all_issues.extend(validate_proposed_staleness())
 
     # Cross-check status vs. release: feature in_progress já released é
     # memória mentirosa (ADR-0024). Default-on, soft, fail-soft sem CHANGELOG/tags.

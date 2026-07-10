@@ -49,4 +49,4 @@
 | ADR-0051 | 2026-07-08 | accepted | postmortem,migration,changelog,data-loss,upgrade,governance | — |
 | ADR-0052 | 2026-07-10 | accepted | positioning,manifest,microspec,bdd,prospection,sdd,methodology | F-0047,F-0048,F-0049 |
 
-_Gerado por `feat-memory audit` em 2026-07-10T03:27:41+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-07-10T03:37:23+00:00. Não edite manualmente._
