@@ -12,6 +12,7 @@ retomada é derivado dessas referências. Vazio = nada em voo.
 
 - ADR de posicionamento da microspec: contrato observável bidirecional (registro e prospecção), sem workflow, com tomadas BDD (ADR-0052)
 - Anti-apodrecimento de prospecção: proposed >90d sem referência em UNRELEASED/ideas gera nudge info (F-0047, ADR-0052)
+- `feat-memory features --json`: export estruturado do Manifest para adapters, read-only (F-0048, ADR-0052)
 
 ## Mudado
 
