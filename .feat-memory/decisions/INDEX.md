@@ -47,5 +47,6 @@
 | ADR-0049 | 2026-06-30 | accepted | process,refactor,testing,methodology | — |
 | ADR-0050 | 2026-07-08 | accepted | methodology,doctrine,profiles,manifest,audit,observability,governance,dogfooding | F-0042,F-0043,F-0044,F-0045,F-0046 |
 | ADR-0051 | 2026-07-08 | accepted | postmortem,migration,changelog,data-loss,upgrade,governance | — |
+| ADR-0052 | 2026-07-10 | accepted | positioning,manifest,microspec,bdd,prospection,sdd,methodology | F-0047,F-0048,F-0049 |
 
-_Gerado por `feat-memory audit` em 2026-07-08T19:04:50+00:00. Não edite manualmente._
+_Gerado por `feat-memory audit` em 2026-07-10T03:27:41+00:00. Não edite manualmente._
