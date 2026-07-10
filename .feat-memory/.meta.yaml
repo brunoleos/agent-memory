@@ -8,7 +8,7 @@
 # Não edite manualmente — re-rode deploy (com --profile para mudar).
 
 schema_version: 2
-version: 3.0.4
+version: 3.1.0
 profile: full
-deployed_at: '2026-07-10T21:32:15+00:00'
+deployed_at: '2026-07-10T22:41:19+00:00'
 telemetry_enabled: true
