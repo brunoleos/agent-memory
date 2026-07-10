@@ -58,6 +58,7 @@ def _staleness_issues(result):
 
 
 def test_old_unreferenced_proposed_gets_info(audit_with_tmp_root):
+    """Binding: F-0047-A1."""
     root = audit_with_tmp_root
     _seed_base(root)
     path = _write_feature(root, "0001")
@@ -71,6 +72,7 @@ def test_old_unreferenced_proposed_gets_info(audit_with_tmp_root):
 
 
 def test_referenced_in_unreleased_is_silent(audit_with_tmp_root):
+    """Binding: F-0047-A2."""
     root = audit_with_tmp_root
     _seed_base(root)
     path = _write_feature(root, "0001")
@@ -110,7 +112,8 @@ def test_recent_proposed_is_silent(audit_with_tmp_root):
 
 
 def test_uncommitted_proposed_is_silent(audit_with_tmp_root):
-    """Idade desconhecida (nunca commitada) → fail-soft, sem nudge."""
+    """Idade desconhecida (nunca commitada) → fail-soft, sem nudge.
+    Binding: F-0047-A4."""
     root = audit_with_tmp_root
     _seed_base(root)
     _write_feature(root, "0001")
@@ -119,7 +122,8 @@ def test_uncommitted_proposed_is_silent(audit_with_tmp_root):
 
 
 def test_old_shipped_is_silent(audit_with_tmp_root):
-    """O relógio é só de prospecção — shipped velho não é apodrecimento."""
+    """O relógio é só de prospecção — shipped velho não é apodrecimento.
+    Binding: F-0047-A3."""
     root = audit_with_tmp_root
     _seed_base(root)
     path = _write_feature(root, "0001", status="shipped")

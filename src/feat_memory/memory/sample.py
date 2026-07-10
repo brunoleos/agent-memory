@@ -118,7 +118,7 @@ def score_feature(fm: dict, fpath: Path, decisions: dict[str, dict],
     return score, reasons
 
 
-def _format_criteria(acceptance: list) -> str:
+def _format_criteria(acceptance: list, bindings: dict | None = None) -> str:
     lines: list[str] = []
     for c in acceptance:
         if not isinstance(c, dict):
@@ -127,7 +127,9 @@ def _format_criteria(acceptance: list) -> str:
         fields = ", ".join(
             f"{k}: {v}" for k, v in c.items() if k not in ("id",)
         )
-        lines.append(f"- [{cid}] {fields}")
+        bound = (bindings or {}).get(str(cid)) or []
+        suffix = f"  [teste declarado: {', '.join(bound)}]" if bound else ""
+        lines.append(f"- [{cid}] {fields}{suffix}")
     return "\n".join(lines) or "- (feature sem critérios — achado por si só)"
 
 
@@ -149,6 +151,7 @@ def collect_candidates(root: Path) -> list[dict]:
             "id": str(fm["id"]),
             "name": str(fm.get("name", "")),
             "path": fp,
+            "fm": fm,
             "acceptance": fm.get("acceptance") or [],
             "decisions": [str(d) for d in (fm.get("decisions") or [])],
             "score": score,
@@ -168,12 +171,16 @@ def emit_prompts(candidates: list[dict], count: int,
         candidates, key=lambda c: (-c["score"], rng.random())
     )
     picked = ordered[:max(count, 0)]
+    from feat_memory.memory import binding as _binding
     for i, c in enumerate(picked):
         if i:
             print("\n" + "=" * 72 + "\n")
         rel = c["path"].resolve()
         rel = rel.relative_to(root.resolve()).as_posix() \
             if rel.is_relative_to(root.resolve()) else c["path"].name
+        # Binding referencial (F-0049): critério com teste declarado ganha a
+        # anotação — o verificador começa rodando o teste citado.
+        bindings = _binding.criterion_bindings(c["fm"])
         print(PROMPT_TEMPLATE.format(
             score=c["score"],
             reasons="; ".join(c["reasons"]) or "amostra de rotina, sem sinal",
@@ -181,7 +188,7 @@ def emit_prompts(candidates: list[dict], count: int,
             fname=c["name"],
             fpath=rel,
             decisions=", ".join(c["decisions"]) or "(nenhum)",
-            criteria=_format_criteria(c["acceptance"]),
+            criteria=_format_criteria(c["acceptance"], bindings),
         ))
     return 0
 

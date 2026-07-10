@@ -744,6 +744,12 @@ def run_audit(write_indices: bool = True,
     # Perfil de governança (ADR-0050): calibra políticas dependentes de perfil
     # (ex.: orçamento de prosa do manifest). Fallback `full` protege pré-v3.
     metrics["profile"] = profile
+
+    # Cobertura por critério (F-0049, ADR-0052): binding referencial opt-in —
+    # teste que cita o token F-NNNN-AN cobre aquele critério. Só features
+    # ativas; convenção não-adotada aparece como "—", não como dívida.
+    from feat_memory.memory import binding as _binding
+    metrics["criterion_coverage"] = _binding.coverage_summary(features)
     return {
         "metrics": metrics,
         "issues": [asdict(i) for i in all_issues],
@@ -775,6 +781,12 @@ def print_report(result: dict) -> None:
         fresh_str = f"{fresh} h" if fresh is not None else "—"
         print(f"Frescor de estado:         {fresh_str}")
     print(f"Cobertura do manifest:     {m['manifest_coverage']:.0%}")
+    cc_crit = m.get("criterion_coverage") or {}
+    if cc_crit.get("adopted"):
+        print(f"Cobertura por critério:    {cc_crit['bound']}/{cc_crit['total']} "
+              f"(convenção F-NNNN-AN)")
+    else:
+        print("Cobertura por critério:    — (convenção F-NNNN-AN, opt-in)")
     print(f"Drift detectado:           {len(m['manifest_drift'])} casos")
     print()
     v = m["manifest_velocity"]

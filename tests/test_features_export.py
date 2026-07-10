@@ -37,6 +37,7 @@ def _run(root, capsys, **kw) -> tuple[int, str]:
 
 
 def test_json_dump_carries_full_acceptance(audit_with_tmp_root, capsys):
+    """Binding: F-0048-A1."""
     root = audit_with_tmp_root
     _write_feature(root, "0001")
 
@@ -54,6 +55,7 @@ def test_json_dump_carries_full_acceptance(audit_with_tmp_root, capsys):
 
 
 def test_archive_only_with_all_flag(audit_with_tmp_root, capsys):
+    """Binding: F-0048-A2."""
     root = audit_with_tmp_root
     _write_feature(root, "0001")
     _write_feature(root, "0002", archived=True)
@@ -68,6 +70,7 @@ def test_archive_only_with_all_flag(audit_with_tmp_root, capsys):
 
 
 def test_empty_manifest_is_valid_json_exit_zero(audit_with_tmp_root, capsys):
+    """Binding: F-0048-A3."""
     root = audit_with_tmp_root
     (root / ".feat-memory" / "manifest" / "features").mkdir(
         parents=True, exist_ok=True)
