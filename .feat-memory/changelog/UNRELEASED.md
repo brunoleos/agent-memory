@@ -10,16 +10,6 @@ retomada é derivado dessas referências. Vazio = nada em voo.
 
 ## Adicionado
 
-- ADR de posicionamento da microspec: contrato observável bidirecional (registro e prospecção), sem workflow, com tomadas BDD (ADR-0052)
-- Anti-apodrecimento de prospecção: proposed >90d sem referência em UNRELEASED/ideas gera nudge info (F-0047, ADR-0052)
-- `feat-memory features --json`: export estruturado do Manifest para adapters, read-only (F-0048, ADR-0052)
-- Binding referencial critério↔teste (token F-NNNN-AN): cobertura por critério no audit e anotação no prompt do sample (F-0049, ADR-0052)
-
 ## Mudado
-
-- METHODOLOGY §Manifest: "descritivo, não aspiracional" corrigido para o modelo bidirecional — prospecção legítima via feature `proposed` com split (ADR-0052)
-- Dedup da METHODOLOGY: §Skills vira contratos apontando para os SKILL.md (corrige drift da gênese re-narrada), nova seção Deploy normativa (casa única), EARS aponta para SCHEMA-REFERENCE gerado (ADR-0052)
-- Dedup dos touchpoints: README/USER_GUIDE viram orquestradores (fatos normativos apontam para METHODOLOGY/SCHEMA-REFERENCE/skills); AGENTS §Identidade encolhe e para de duplicar o roster de subcomandos (ADR-0052)
-- Roster de skills do bloco AGENTS gerado mecanicamente dos `summary` dos SKILL.md (token {SKILLS_ROSTER}); orçamentos de prosa entram no SCHEMA-REFERENCE gerado (ADR-0052)
 
 ## Corrigido
